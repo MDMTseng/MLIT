@@ -1,4 +1,4 @@
-
+/*
 (function() {
   Matter.use('matter-collision-events');
   var Engine = Matter.Engine,
@@ -128,7 +128,8 @@
     });
   });
 
-  //NNTest();
+  NNTest();
+
 })()
 
 
@@ -142,58 +143,41 @@ function NNTest()
       for(let i = 0 ;i<arrL; i++)
       {
         let t = 2*Math.PI*(i-arrL/2)/arrL;
-        dataSet.push({input: [t], output: [Math.sin(t)]});
+        dataSet.push({input: [t], output: [Math.sin(t),Math.sin(t-1)]});
       }
     }
 
-
-    function shuffle(a) {
-        var j, x, i;
-        for (i = a.length - 1; i > 0; i--) {
-            j = Math.floor(Math.random() * (i + 1));
-            x = a[i];
-            a[i] = a[j];
-            a[j] = x;
-        }
-        return a;
-    }
-    shuffle(dataSet);
+    shuffle_array(dataSet);
 
     {
-      let in_dim=1,out_dim=1;
-      var layer_defs = [];
-      // minimal network: a simple binary SVM classifer in 2-dimensional space
-      layer_defs.push({type:'input', out_sx:1, out_sy:1, out_depth:in_dim});
-      layer_defs.push({type:'fc', num_neurons:20, activation:'relu'});
-      layer_defs.push({type:'fc', num_neurons:10, activation:'relu'});
-      layer_defs.push({type:'regression', num_neurons:out_dim});
+      let in_dim=1,out_dim=2;
+      let netSet=generate_net(in_dim,out_dim);
 
-      // create a net
-      var net = new convnetjs.Net();
-      net.makeLayers(layer_defs);
-
-      var trainer = new convnetjs.Trainer(net, {method: 'adadelta', learning_rate: 0.04,
-                                          l2_decay: 0.002, momentum: 0.0, batch_size: 10,
-                                          l1_decay: 0.002});
-
-
-      var x = new convnetjs.Vol(1,1,1,0.0); // a 1x1x2 volume initialized to 0's.
+      var x = new convnetjs.Vol(1,1,in_dim,0.0); // a 1x1x2 volume initialized to 0's.
       for(var tt=0;tt<10001;tt++)
       {
         let avloss = 0;
         for(var i=0;i<dataSet.length;i++) {
           x.w[0] = dataSet[i].input; // Vol.w is just a list, it holds your data
-          var stats = trainer.train(x, dataSet[i].output);
+          var stats = netSet.trainer.train(x, dataSet[i].output);
           avloss += stats.loss;
         }
-        if(tt%1000==0)console.log("Loss::",avloss);
+        if(tt%1000==0)
+        {
+          console.log("Loss::",avloss);
+          console.log(netSet.net);
+        }
       }
 
       for(var i=0;i<dataSet.length;i++) {
         x.w[0] = dataSet[i].input; // Vol.w is just a list, it holds your data
-        var scores = net.forward(x); // pass forward through network
-
+        var scores = netSet.net.forward(x); // pass forward through network
         console.log(scores);
       }
     }
 }
+
+
+*/
+
+new NNWorld(document.body);
