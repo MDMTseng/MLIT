@@ -128,82 +128,72 @@
     });
   });
 
-
-  let dataSet = [];
-
-  {
-    let arrL=100;
-    for(let i = 0 ;i<arrL; i++)
-    {
-      let t = 2*Math.PI*(i-arrL/2)/arrL;
-      dataSet.push({input: [t], output: [Math.sin(t)]});
-    }
-  }
+  //NNTest();
+})()
 
 
-  {
-    var layer_defs = [];
-    // minimal network: a simple binary SVM classifer in 2-dimensional space
-    layer_defs.push({type:'input', out_sx:1, out_sy:1, out_depth:1});
-    layer_defs.push({type:'fc', num_neurons:20, activation:'relu'});
-    layer_defs.push({type:'fc', num_neurons:20, activation:'relu'});
-    layer_defs.push({type:'regression', num_neurons:1});
+function NNTest()
+{
 
-    // create a net
-    var net = new convnetjs.Net();
-    net.makeLayers(layer_defs);
-
-    // create a 1x1x2 volume of input activations:
-    var x = new convnetjs.Vol(1,1,2);
-    x.w[0] = 0.5; // w is the field holding the actual data
-    x.w[1] = -1.3;
-    // a shortcut for the above is var x = new convnetjs.Vol([0.5, -1.3]);
-
-    var scores = net.forward(x); // pass forward through network
-    // scores is now a Vol() of output activations
-    console.log('score for class 0 is assigned:'  + scores.w[0]);
-    var trainer = new convnetjs.Trainer(net, {method: 'sgd', learning_rate: 0.01,
-                                        l2_decay: 0.001, momentum: 0.9, batch_size: 10,
-                                        l1_decay: 0.001});
+    let dataSet = [];
 
     {
-
-      data = [];
-      labels = [];
-      data.push([-0.4326  ,  1.1909 ]); labels.push(1);
-      data.push([3.0, 4.0]); labels.push(1);
-      data.push([0.1253 , -0.0376   ]); labels.push(1);
-      data.push([0.2877 ,   0.3273  ]); labels.push(1);
-      data.push([-1.1465 ,   0.1746 ]); labels.push(1);
-      data.push([1.8133 ,   1.0139  ]); labels.push(0);
-      data.push([2.7258 ,   1.0668  ]); labels.push(0);
-      data.push([1.4117 ,   0.5593  ]); labels.push(0);
-      data.push([4.1832 ,   0.3044  ]); labels.push(0);
-      data.push([1.8636 ,   0.1677  ]); labels.push(0);
-      data.push([0.5 ,   3.2  ]); labels.push(1);
-      data.push([0.8 ,   3.2  ]); labels.push(1);
-      data.push([1.0 ,   -2.2  ]); labels.push(1);
-      N = labels.length;
+      let arrL=100;
+      for(let i = 0 ;i<arrL; i++)
+      {
+        let t = 2*Math.PI*(i-arrL/2)/arrL;
+        dataSet.push({input: [t], output: [Math.sin(t)]});
+      }
     }
 
 
-    var x = new convnetjs.Vol(1,1,1,0.0); // a 1x1x2 volume initialized to 0's.
-    for(var tt=0;tt<2001;tt++)
+    function shuffle(a) {
+        var j, x, i;
+        for (i = a.length - 1; i > 0; i--) {
+            j = Math.floor(Math.random() * (i + 1));
+            x = a[i];
+            a[i] = a[j];
+            a[j] = x;
+        }
+        return a;
+    }
+    shuffle(dataSet);
+
     {
-      let avloss = 0;
+      let in_dim=1,out_dim=1;
+      var layer_defs = [];
+      // minimal network: a simple binary SVM classifer in 2-dimensional space
+      layer_defs.push({type:'input', out_sx:1, out_sy:1, out_depth:in_dim});
+      layer_defs.push({type:'fc', num_neurons:20, activation:'relu'});
+      layer_defs.push({type:'fc', num_neurons:10, activation:'relu'});
+      layer_defs.push({type:'regression', num_neurons:out_dim});
+
+      // create a net
+      var net = new convnetjs.Net();
+      net.makeLayers(layer_defs);
+
+      var trainer = new convnetjs.Trainer(net, {method: 'adadelta', learning_rate: 0.04,
+                                          l2_decay: 0.002, momentum: 0.0, batch_size: 10,
+                                          l1_decay: 0.002});
+
+
+      var x = new convnetjs.Vol(1,1,1,0.0); // a 1x1x2 volume initialized to 0's.
+      for(var tt=0;tt<10001;tt++)
+      {
+        let avloss = 0;
+        for(var i=0;i<dataSet.length;i++) {
+          x.w[0] = dataSet[i].input; // Vol.w is just a list, it holds your data
+          var stats = trainer.train(x, dataSet[i].output);
+          avloss += stats.loss;
+        }
+        if(tt%1000==0)console.log("Loss::",avloss);
+      }
+
       for(var i=0;i<dataSet.length;i++) {
         x.w[0] = dataSet[i].input; // Vol.w is just a list, it holds your data
-        var stats = trainer.train(x, dataSet[i].output);
-        avloss += stats.loss;
+        var scores = net.forward(x); // pass forward through network
+
+        console.log(scores);
       }
-      if(tt%100==0)console.log("Loss::",avloss);
     }
-
-    for(var i=0;i<dataSet.length;i++) {
-      x.w[0] = dataSet[i].input; // Vol.w is just a list, it holds your data
-      var scores = net.forward(x); // pass forward through network
-
-      console.log(scores);
-    }
-  }
-})()
+}
