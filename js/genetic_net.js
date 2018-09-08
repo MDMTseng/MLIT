@@ -6,8 +6,9 @@ function generate_net(in_dim,out_dim)
   var layer_defs = [];
   // minimal network: a simple binary SVM classifer in 2-dimensional space
   layer_defs.push({type:'input', out_sx:1, out_sy:1, out_depth:in_dim});
-  layer_defs.push({type:'fc', num_neurons:20, activation:'relu'});
-  layer_defs.push({type:'fc', num_neurons:10, activation:'relu'});
+  layer_defs.push({type:'fc', num_neurons:30, activation:'relu'});
+  layer_defs.push({type:'fc', num_neurons:30, activation:'relu'});
+  layer_defs.push({type:'fc', num_neurons:30, activation:'relu'});
   layer_defs.push({type:'regression', num_neurons:out_dim});
 
   // create a net
@@ -76,6 +77,7 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
   this.score = 0;
   this.health = 1;
   this.energy = 1;
+  this.MaxSpeed = 0;
   this.in_dim=this.eyeBeamAngles.length+1+1+1+1+1;
   //Eye beams, health, energy, rotationSum, speed, angularVelocity
   this.out_dim=1+1;//For acceleration, turn,
@@ -95,6 +97,7 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
     this.survive_time = 0;
     this.rotationSum=0;
     this.score =0;
+    this.distanceAddup = 0;
     let body = this.body;
     Matter.Body.setVelocity(body, {x:0,y:0});
     Matter.Body.setAngularVelocity(body,0);
@@ -105,7 +108,7 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
   this.reset();
 
   this.getScore=()=>{
-    score = this.energy+this.health+this.survive_time;
+    score = this.energy+this.health+this.survive_time+this.MaxSpeed;
     return score;
   }
 
@@ -151,7 +154,7 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
     }
   };
 
-  this.modelNoising=(noise_alpha=0.001)=>{
+  this.modelNoising=(noise_alpha=0.01,mutate_chance=0.01)=>{
     let net = this.core.netSet.net;
     for(let i=1;i<net.layers.length;i+=2)//
     {
@@ -159,7 +162,8 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
       let biases = layer.biases;
       for(let j=0;j<biases.w.length;j++)
       {
-        biases.w[j]+=noise_alpha*(Math.random()*2-1);
+        if(Math.random()<mutate_chance)
+          biases.w[j]+=noise_alpha*(Math.random()*2-1);
       }
 
       let filters = layer.filters;
@@ -167,13 +171,15 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
       {
         for(let k =0;k<filters[j].w.length;k++)
         {
-          filters[j].w[k] +=noise_alpha*(Math.random()*2-1);
+
+          if(Math.random()<mutate_chance)
+            filters[j].w[k] +=noise_alpha*(Math.random()*2-1);
         }
       }
     }
   };
   this.prePosition=null;
-  this.draw=(canvas_ctx,world)=>{
+  this.update=(canvas_ctx,world)=>{
 
     if(this.health<=0)return;
 
@@ -195,21 +201,25 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
       let len=300;
       //let toVec={x:fromVec.x+angle_vec.x*len,y:fromVec.y+angle_vec.y*len};
 
-      canvas_ctx.beginPath();
-
       var  ret = raycast_naive(bs, fromVec, angle_vec, len, stepSize=5);
 
-      if(typeof ret.body == 'undefined')
+      if(canvas_ctx!=null)
       {
-          canvas_ctx.strokeStyle="rgba(0,165,0,0.3)";
+
+        canvas_ctx.beginPath();
+        if(typeof ret.body == 'undefined')
+        {
+            canvas_ctx.strokeStyle="rgba(0,165,0,0.3)";
+        }
+        else
+        {
+            canvas_ctx.strokeStyle="rgba(160,0,0,0.5)";
+        }
+        canvas_ctx.moveTo(fromVec.x,fromVec.y);
+        canvas_ctx.lineTo(ret.point.x,ret.point.y);
+        canvas_ctx.stroke();
+
       }
-      else
-      {
-          canvas_ctx.strokeStyle="rgba(160,0,0,0.5)";
-      }
-      canvas_ctx.moveTo(fromVec.x,fromVec.y);
-      canvas_ctx.lineTo(ret.point.x,ret.point.y);
-      canvas_ctx.stroke();
       SenseData.push(ret.dist);
     }
 
@@ -221,34 +231,37 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
     SenseData.push(body.angularVelocity);
     SenseData.push(body.speed);
 
+    if(this.MaxSpeed<body.speed)
+      this.MaxSpeed+=body.speed;
     let action = this.core.interact(SenseData);
 
     if(action.w[0]>1)action.w[0]=1;
     else if(action.w[0]<-1)action.w[0]=-1;
 
     let newAngVelo=action.w[0]*Math.PI/16000;
-    this.rotationSum += newAngVelo;
     newAngVelo+=body.angularVelocity;
-    if(newAngVelo>0.05)
-      newAngVelo=0.05;
-    else if(newAngVelo<-0.05)
-      newAngVelo=-0.05;
-    //Matter.Body.setAngularVelocity( this.body,newAngVelo);
+    if(newAngVelo>20)
+      newAngVelo=20;
+    else if(newAngVelo<-20)
+      newAngVelo=-20;
+    this.rotationSum*=0.9999;
+    this.rotationSum += newAngVelo;
+    Matter.Body.setAngularVelocity( this.body,newAngVelo);
 
 
     //console.log(this.rotationSum);
     if(this.prePosition!=null)
     {
       var dist = Matter.Vector.sub(this.prePosition, body.position);
-      if(Matter.Vector.magnitude(dist)<0.5)this.health-=0.01;
+      if(Matter.Vector.magnitude(dist)<0.1)this.health-=0.001;
     }
     this.prePosition={x:body.position.x,y:body.position.y};
-    if(this.rotationSum>0.5)this.health-=0.001;
+    if(this.rotationSum>10 || this.rotationSum<-10 )this.health-=0.001;
 
 
     let main_angle_vec={x:Math.cos(creature.body.angle),y:Math.sin(creature.body.angle)};
-    main_angle_vec.x*=action.w[1]*0.000003;
-    main_angle_vec.y*=action.w[1]*0.000003;
+    main_angle_vec.x*=action.w[1]*0.000003*body.mass;
+    main_angle_vec.y*=action.w[1]*0.000003*body.mass;
 
     //Matter.Vector.magnitude(main_angle_vec);
     Matter.Body.applyForce(this.body, fromVec,main_angle_vec);
@@ -257,7 +270,7 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
 }
 
 function NNWorld(renderDOM) {
-  this.creatureCount = 30;
+  this.creatureCount = 10;
   this.pool = [];
 
   let engine = Matter.Engine.create();
@@ -280,7 +293,7 @@ function NNWorld(renderDOM) {
      var roundBody = Matter.Bodies.circle(
        Math.random()*render.canvas.width,
        Math.random()*render.canvas.height,
-       10, 10);
+       10, {frictionAir: 0.02});
      this.pool.push(new NNCreature( roundBody,NNCore));
    }
    let showWallPix=40;
@@ -292,8 +305,6 @@ function NNWorld(renderDOM) {
 
    Matter.World.add(engine.world, [ground,ceiling,lwall,rwall]);
 
-   Matter.Engine.run(engine);
-   Matter.Render.run(render);
 
    let thisWorld=this;
    this.worldReset=()=>{
@@ -305,7 +316,6 @@ function NNWorld(renderDOM) {
       {
         scoreArr.push(thisWorld.pool[i].getScore());
       }
-      console.log("scoreArr:",scoreArr);
       thisWorld.pool.sort(function(a, b){return b.getScore()-a.getScore()});
       scoreArr=[];
       for(let i=0;i<thisWorld.pool.length;i++)
@@ -346,21 +356,23 @@ function NNWorld(renderDOM) {
           creature.survive_time++;
        }
      }
-     console.log("die_count:",die_count);
+     //console.log("die_count:",die_count);
 
      if(die_count > thisWorld.pool.length*0.8)
      {
        thisWorld.worldReset();
        //reset the world;
      }
+     else {
+
+       thisWorld.pool.forEach(function(creature) {
+         creature.update(null,thisWorld  );
+       });
+     }
    });
 
    Matter.Events.on(render, "afterRender", (evt)=>{
      let ctx = evt.source.canvas.getContext("2d");
-     thisWorld.pool.forEach(function(creature) {
-       creature.draw(ctx,thisWorld  );
-
-     });
    });
 
 
@@ -374,5 +386,16 @@ function NNWorld(renderDOM) {
        }
        return a;
    }
+   this.skipF=100;
+   setInterval(function(){
+     for(let i=0;i<this.skipF;i++)
+     {
+       Matter.Engine.update(this.engine);
+     }
+     Matter.Render.world(this.render);
+
+   }.bind(this), 30);
+    //Matter.Engine.run(engine);
+  //  Matter.Render.run(render);
 
 };

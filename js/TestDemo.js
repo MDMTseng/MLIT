@@ -179,5 +179,19 @@ function NNTest()
 
 
 */
+let SimWorld = null;
+(function() {
+  let canvasX =document.getElementById("SIM_CANVAS");
+  console.log(canvasX);
+  SimWorld = new NNWorld(canvasX);
+})()
 
-new NNWorld(document.body);
+function NormalSpeed(){
+  SimWorld.skipF = 1;
+}
+function FastSpeed(){
+  SimWorld.skipF = 10;
+}
+function SkipSpeed(){
+  SimWorld.skipF = 100;
+}
