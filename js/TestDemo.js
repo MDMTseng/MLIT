@@ -189,9 +189,13 @@ let SimWorld = null;
 function NormalSpeed(){
   SimWorld.skipF = 1;
 }
-function FastSpeed(){
-  SimWorld.skipF = 10;
+function SpeedDown(){
+  SimWorld.skipF /=4;
+  if(SimWorld.skipF<1)SimWorld.skipF=1;
 }
-function SkipSpeed(){
-  SimWorld.skipF = 100;
+function SpeedUp(){
+  SimWorld.skipF *= 4;
+}
+function printINFO(){
+  SimWorld.printINFO();
 }
