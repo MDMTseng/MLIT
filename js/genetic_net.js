@@ -118,8 +118,8 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
     var bodyAMomentum = Matter.Vector.mult(pair.bodyA.velocity, pair.bodyA.mass);
     var bodyBMomentum = Matter.Vector.mult(pair.bodyB.velocity, pair.bodyB.mass);
     var relativeMomentum = Matter.Vector.sub(bodyAMomentum, bodyBMomentum);
-
-    this.health-=0.4;//+0.2*Matter.Vector.magnitude(relativeMomentum);
+    if(pair.bodyB.isStatic);
+      this.health-=0.4;//+0.2*Matter.Vector.magnitude(relativeMomentum);
   });
   function randInt(MaxNum)
   {
@@ -267,8 +267,12 @@ function NNCreature(body, CoreFunction)//body is the pysical(matter.js engine) b
 
 
     let main_angle_vec={x:Math.cos(creature.body.angle),y:Math.sin(creature.body.angle)};
-    main_angle_vec.x*=action.w[1]*0.000002*body.mass;
-    main_angle_vec.y*=action.w[1]*0.000002*body.mass;
+    if(action.w[1]>10)action.w[1]=10;
+    if(action.w[1]<-10)action.w[1]=-10;
+
+
+    main_angle_vec.x*=action.w[1]*0.0002*body.mass;
+    main_angle_vec.y*=action.w[1]*0.0002*body.mass;
 
     //Matter.Vector.magnitude(main_angle_vec);
     Matter.Body.applyForce(this.body, fromVec,main_angle_vec);
@@ -293,7 +297,7 @@ function NNWorld(renderDOM) {
                   }
                });
    this.render = render;
-   this.engine.world.gravity.y = 0;
+   this.engine.world.gravity.y = 0.01;
 
    let showWallPix=40;
    for( let i=0;i<this.creatureCount;i++)
@@ -313,6 +317,32 @@ function NNWorld(renderDOM) {
    Matter.World.add(engine.world, [ground,ceiling,lwall,rwall]);
 
 
+   function WeightedRandomIdx(WeightArr,WeightSum=0)
+   {
+     if(WeightSum==0)
+     {
+       for(let i=0;i<WeightArr.length;i++)
+       {
+         WeightSum+=WeightArr[i];
+       }
+     }
+
+
+     let rand=Math.random()*WeightSum;
+     let WeightAcc=0;
+     for(let i=0;i<WeightArr.length;i++)
+     {
+       if(rand<WeightAcc+WeightArr[i])
+       {
+         //Return gives a index in integer part and percentage in decimal part
+         return i+(rand-WeightAcc)/WeightArr[i];
+       }
+       WeightAcc+=WeightArr[i];
+     }
+
+     return -1;
+   }
+
    let updateCount=0;
    let generation=0;
    let thisWorld=this;
@@ -322,16 +352,14 @@ function NNWorld(renderDOM) {
       thisWorld.pool.forEach(function(creature) {
         Matter.Composite.remove(thisWorld.engine.world, creature.body);
       });
-      let scoreArr=[];
-      for(let i=0;i<thisWorld.pool.length;i++)
-      {
-        scoreArr.push(thisWorld.pool[i].getScore());
-      }
       thisWorld.pool.sort(function(a, b){return b.getScore()-a.getScore()});
-      scoreArr=[];
+      let scoreArr=[];
+      let ScoreSum=0;
       for(let i=0;i<thisWorld.pool.length;i++)
       {
-        scoreArr.push(thisWorld.pool[i].getScore());
+        let score = thisWorld.pool[i].getScore();
+        ScoreSum+=score;
+        scoreArr.push(score);
       }
       console.log(">>>generation:",generation);
       console.log(scoreArr);
@@ -342,7 +370,9 @@ function NNWorld(renderDOM) {
       {
         if(Math.random()<1.0*i/thisWorld.pool.length)
         {
-          thisWorld.pool[i].cross(topList);
+          let rand1=Math.floor(WeightedRandomIdx(scoreArr,ScoreSum));
+          let rand2=Math.floor(WeightedRandomIdx(scoreArr,ScoreSum));
+          thisWorld.pool[i].cross([thisWorld.pool[rand1],thisWorld.pool[rand2] ]);
           thisWorld.pool[i].modelNoising();
         }
       }
@@ -381,6 +411,7 @@ function NNWorld(renderDOM) {
      updateCount++;
      if(die_count > thisWorld.pool.length*0.8 || updateCount>100000)
      {
+       console.log(updateCount);
        thisWorld.worldReset();
        //reset the world;
      }
