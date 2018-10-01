@@ -71,21 +71,21 @@ function drawPlot(env,creature)
 }
 
 let gw = new GridWorld([
-    [0,0,0,0,0,0,0,-1],
-    [0,0,0,0,0,0,0,-1],
     [0,0,-10,0,0,0,0,-1],
-    [0,0,0,0,10,0,0,-1],
-    [0,0,0,0,10,0,0,-1],
+    [0,0,0,0,0,0,0,-1],
+    [0,0,-10,0,-10,0,0,-1],
+    [0,0,-10,0,10,0,0,-1],
+    [0,0,-10,0,10,0,0,-1],
 ]);
 
-function getEnvFeedBack(policy,stepLimit=100)
+function getEnvFeedBack(policy,stepLimit=300)
 {
     let score=0;
     let location={x:0,y:0};
     let i;
     for(i=0;i<stepLimit;i++)
     {
-        let decesion = gw.decision( location.x, location.y, policy,0.05);
+        let decesion = gw.decision( location.x, location.y, policy,0.01);
         if(Math.abs(decesion[0])>Math.abs(decesion[1]))
         {
             location.y+=(decesion[0]<0)?-1:1;
@@ -102,7 +102,7 @@ function getEnvFeedBack(policy,stepLimit=100)
     }
     //if(i==stepLimit)reward+=-10;
 
-    console.log(score,i,location);
+    //console.log(score,i,location);
 
     return score;
 }
@@ -121,7 +121,7 @@ function generate_creatures(count,scale=0.1)
     return creatures
 }
 
-let creatures=generate_creatures(30);
+let creatures=generate_creatures(130);
 
 
 

@@ -51,7 +51,7 @@ function generate_creatures(ExpRange,count)
     return creatures
 }
 
-function SpownNewPopulation(expRange=ExpRange,count=10)
+function SpownNewPopulation(expRange=ExpRange,count=150)
 {
     return generate_creatures(expRange,count);
 }
@@ -97,7 +97,7 @@ function EVOLVE()
                 let parent1=topN_List[Math.floor(Math.random()*topN)].x;
                 let parent2=topN_List[Math.floor(Math.random()*topN)].x;
                 body.x = 
-                    (parent1)+
+                    (parent1+parent2)/2+
                     (Math.random()-0.5);
 
                 if(Math.random()<0.1)
