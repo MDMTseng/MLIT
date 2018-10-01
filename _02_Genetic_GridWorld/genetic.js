@@ -1,66 +1,128 @@
 
+var canvas = document.getElementById("myGridWorld");
+var ctx = canvas.getContext("2d");
 function drawPlot(env,creature)
 {
-    setPlot(WorldPlot,1,env);
-    setPlot(WorldPlot,0,creature);
-    setPlotYLimit(WorldPlot,0,{min:-2,max:5});
-    setPlotYLimit(WorldPlot,1,{min:-2,max:5});
-    WorldPlot.update();
-}
 
+    ctx.fillStyle = "#FF0000";
+    let gridXC = env.theWorld[0].length;
+    let gridYC = env.theWorld.length;
+    let cellH = canvas.height/gridYC;
+    let cellW = canvas.width/gridXC;
+    let bestCreature = creature[0];
 
-
-
-let ExpRange={min:-2*2*Math.PI,max:2*2*Math.PI}
-
-function getEnvFeedBack(param)
-{
-    //let x = 0.5*(-param*param/30+3)*Math.sin(param);
-    //let x = Math.sin(param*param/10)+param/20;
-    let x =Math.sin(param);
-    return x;
-    //return Math.sin(param*param/10)+param/20;
-}
-
-function GenerateEnvArr(ExpRange,samples=100)
-{
-    let arr = [];
-
-
-    for(let i=0;i<samples;i++)
+    for(let i=0;i<gridYC;i++)
     {
-        let alpha = 1.0*i/(samples-1);
-        let x = (1-alpha)*ExpRange.min+(alpha)*ExpRange.max;
-        arr.push({x:x,y:getEnvFeedBack(x)});
+        for(let j=0;j<gridXC;j++)
+        {
+            
+            ctx.strokeRect(cellW*j,cellH*i,cellW,cellH);
+
+            let decesion = gw.decision( j, i, bestCreature.x,0);
+
+            let down_c,right_c,reward;
+            if(Math.abs(decesion[0])>Math.abs(decesion[1]))
+            {
+                decesion[1]=0;
+            }
+            else
+            {
+                decesion[0]=0;
+            }
+            {
+                let value = decesion[0]*400;
+                value+=128;
+                if(value>255)value=255;
+                if(value<0)value=0;
+                down_c = value;
+            }
+            {
+                let value = decesion[1]*400;
+                value+=128;
+                if(value>255)value=255;
+                if(value<0)value=0;
+                right_c = value;
+            }
+
+            {
+                let value = env.theWorld[i][j]*10;
+                value+=128;
+                if(value>255)value=255;
+                if(value<0)value=0;
+                reward = value;
+            }
+
+
+            
+            ctx.fillStyle =
+            'rgb(' + reward + ','+reward+','+reward+')';
+        
+            ctx.fillRect(cellW*j,cellH*i,cellW,cellH);
+            ctx.beginPath();
+            ctx.moveTo(cellW*(j+0.5),cellH*(i+0.5));
+            let normalVal=Math.hypot(decesion[1],decesion[0]);
+            ctx.lineTo(
+                cellW*(j+0.5)+decesion[1]/normalVal*10,
+                cellH*(i+0.5)+decesion[0]/normalVal*10);
+            ctx.stroke();
+
+        }
     }
-    return arr;
 }
 
-let worldEnv = GenerateEnvArr(ExpRange);
+let gw = new GridWorld([
+    [0,0,0,0,0,0,0,-1],
+    [0,0,0,0,0,0,0,-1],
+    [0,0,-10,0,0,0,0,-1],
+    [0,0,0,0,10,0,0,-1],
+    [0,0,0,0,10,0,0,-1],
+]);
 
-
-
-function generate_creatures(ExpRange,count)
+function getEnvFeedBack(policy,stepLimit=100)
 {
+    let score=0;
+    let location={x:0,y:0};
+    let i;
+    for(i=0;i<stepLimit;i++)
+    {
+        let decesion = gw.decision( location.x, location.y, policy,0.05);
+        if(Math.abs(decesion[0])>Math.abs(decesion[1]))
+        {
+            location.y+=(decesion[0]<0)?-1:1;
+        }
+        else
+        {
+            location.x+=(decesion[1]<0)?-1:1;
+        }
+    
+        let reward = gw.reward(location.x, location.y);
+        score+=reward+0.001;
+        if(reward!=0)break;
+
+    }
+    //if(i==stepLimit)reward+=-10;
+
+    console.log(score,i,location);
+
+    return score;
+}
+
+
+function generate_creatures(count,scale=0.1)
+{
+
     let creatures=[];
     for(let i=0;i<count;i++)
     {
-        let x=Math.random()*(ExpRange.max-ExpRange.min)+ExpRange.min;
-        creatures.push({x:x,y:0});
+        
+        let policy = gw.RandomPolicy_Init(scale);
+        creatures.push({x:policy,y:0});
     }
     return creatures
 }
 
-function SpownNewPopulation(expRange=ExpRange,count=150)
-{
-    return generate_creatures(expRange,count);
-}
-let creatures=SpownNewPopulation({min:0,max:1});
+let creatures=generate_creatures(30);
 
-
-
-
-drawPlot(worldEnv,creatures);
 
 
 function EVOLVE()
@@ -68,40 +130,30 @@ function EVOLVE()
 
     creatures=creatures.map(
         (body)=>{
-            if(body.x>ExpRange.min && body.x<ExpRange.max)
-                body.y=getEnvFeedBack(body.x);
-            else
-            {
-                body.y=-1000;
-                body.x=ExpRange.min;
-            }
+            body.y=getEnvFeedBack(body.x);
             return body;
         }
     );
-    drawPlot(worldEnv,creatures);
-
+    //drawPlot(worldEnv,creatures);
 
     creatures.sort(function(a, b){return b.y-a.y});
     let topN=Math.floor(creatures.length*0.5);
     let leastAcceptedScore = creatures[topN].y;
     let topN_List=creatures.slice(0, topN);
 
+    drawPlot(gw,creatures);
     let topScore = topN_List[0].y;
 
     console.log("top:"+topScore, "mid:"+leastAcceptedScore);
     
     creatures=creatures.map(
-        (body)=>{
-            if(body.y<leastAcceptedScore)
+        (body,idx)=>{
+            if(idx>topN)
             {
                 let parent1=topN_List[Math.floor(Math.random()*topN)].x;
                 let parent2=topN_List[Math.floor(Math.random()*topN)].x;
-                body.x = 
-                    (parent1)+
-                    (Math.random()-0.5);
-
-                if(Math.random()<0.1)
-                    body.x+=20*(Math.random()-0.5);
+                body.x = gw.Policy_Mix(body.x,[parent1,parent2]);
+                body.x = gw.Policy_Mutate(body.x,body.x,0.02,0.05,0.1);
             }
             body.y=0;
             return body;
@@ -112,9 +164,7 @@ function EVOLVE()
 
 function ResetCreature()
 {
-    creatures=SpownNewPopulation({min:-6,max:-4});
-
-    drawPlot(worldEnv,creatures);
+    let creatures=generate_creatures(150);
 }
 function NextStep()
 {

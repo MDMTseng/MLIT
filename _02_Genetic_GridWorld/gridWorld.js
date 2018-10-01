@@ -16,7 +16,7 @@ function GridWorld(theWorld)
 
 
 
-    this.decision = function( x, y, policy, exploration_factor=0.1 ){
+    this.decision = function( x, y, policy, exploration_factor=0 ){
         return  [
             policy[y][x][0]+this.rand(exploration_factor),
             policy[y][x][1]+this.rand(exploration_factor)];
@@ -79,6 +79,8 @@ function GridWorld(theWorld)
                     outPolicy[i][j][0]+=this.rand(xscale);
                     outPolicy[i][j][1]+=this.rand(xscale);
                 }
+                outPolicy[i][j][0]*=0.999;
+                outPolicy[i][j][1]*=0.999;
             }
         }
         return  outPolicy;

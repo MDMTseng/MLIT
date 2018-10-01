@@ -51,7 +51,7 @@ function generate_creatures(ExpRange,count)
     return creatures
 }
 
-function SpownNewPopulation(expRange=ExpRange,count=150)
+function SpownNewPopulation(expRange=ExpRange,count=10)
 {
     return generate_creatures(expRange,count);
 }
