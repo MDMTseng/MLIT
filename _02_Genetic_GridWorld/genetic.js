@@ -85,7 +85,7 @@ function getEnvFeedBack(policy,stepLimit=300)
     let i;
     for(i=0;i<stepLimit;i++)
     {
-        let decesion = gw.decision( location.x, location.y, policy,0.01);
+        let decesion = gw.decision( location.x, location.y, policy,0.001);
         if(Math.abs(decesion[0])>Math.abs(decesion[1]))
         {
             location.y+=(decesion[0]<0)?-1:1;
@@ -164,7 +164,7 @@ function EVOLVE()
 
 function ResetCreature()
 {
-    let creatures=generate_creatures(150);
+    creatures=generate_creatures(150);
 }
 function NextStep()
 {
