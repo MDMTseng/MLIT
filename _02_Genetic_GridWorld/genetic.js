@@ -15,12 +15,47 @@ function drawPlot(env,creature)
     {
         for(let j=0;j<gridXC;j++)
         {
-            
             ctx.strokeRect(cellW*j,cellH*i,cellW,cellH);
+
+
+            {
+                let value = env.theWorld[i][j]*10;
+                value+=128;
+                if(value>255)value=255;
+                if(value<0)value=0;
+                let reward = value;
+            
+                ctx.fillStyle =
+                'rgb(' + reward + ','+reward+','+reward+')';
+            
+                ctx.fillRect(cellW*j,cellH*i,cellW,cellH);
+    
+            }
+        }
+    }
+    for(let i=0;i<gridYC;i++)
+    {
+        for(let j=0;j<gridXC;j++)
+        {
+            
+           
 
             let decesion = gw.decision( j, i, bestCreature.x,0);
 
-            let down_c,right_c,reward;
+            let down_c,right_c;
+
+            {
+                ctx.strokeStyle ='rgba(255,0,0,0.5)';
+                ctx.beginPath();
+                ctx.moveTo(cellW*(j+0.5),cellH*(i+0.5));
+                let normalVal=0.002;//Math.hypot(decesion[1],decesion[0]);
+                ctx.lineTo(
+                    cellW*(j+0.5)+decesion[1]/normalVal,
+                    cellH*(i+0.5)+decesion[0]/normalVal);
+                
+                ctx.stroke();
+            }
+
             if(Math.abs(decesion[0])>Math.abs(decesion[1]))
             {
                 decesion[1]=0;
@@ -29,6 +64,10 @@ function drawPlot(env,creature)
             {
                 decesion[0]=0;
             }
+
+
+
+
             {
                 let value = decesion[0]*400;
                 value+=128;
@@ -44,26 +83,15 @@ function drawPlot(env,creature)
                 right_c = value;
             }
 
-            {
-                let value = env.theWorld[i][j]*10;
-                value+=128;
-                if(value>255)value=255;
-                if(value<0)value=0;
-                reward = value;
-            }
 
-
-            
-            ctx.fillStyle =
-            'rgb(' + reward + ','+reward+','+reward+')';
-        
-            ctx.fillRect(cellW*j,cellH*i,cellW,cellH);
             ctx.beginPath();
+            ctx.strokeStyle ='rgba(0,0,0,1)';
             ctx.moveTo(cellW*(j+0.5),cellH*(i+0.5));
             let normalVal=Math.hypot(decesion[1],decesion[0]);
             ctx.lineTo(
                 cellW*(j+0.5)+decesion[1]/normalVal*10,
                 cellH*(i+0.5)+decesion[0]/normalVal*10);
+            
             ctx.stroke();
 
         }
@@ -71,21 +99,21 @@ function drawPlot(env,creature)
 }
 
 let gw = new GridWorld([
-    [0,0,-10,0,0,0,0,-1],
-    [0,0,0,0,0,0,0,-1],
+    [0,0,-10,1, 0,0,100,-1],
     [0,0,-10,0,-10,0,0,-1],
-    [0,0,-10,0,10,0,0,-1],
-    [0,0,-10,0,10,0,0,-1],
+    [0,0,-10,0,-10,0,0,-1],
+    [0,0,-10,0,1,0,0,-1],
+    [0,0, 0,0,-10,0,0,-1],
 ]);
 
-function getEnvFeedBack(policy,stepLimit=300)
+function getEnvFeedBack(policy,stepLimit=100)
 {
     let score=0;
-    let location={x:0,y:0};
+    let location={x:0,y:0};//{x:Math.floor(Math.random()*8),y:Math.floor(Math.random()*5)};
     let i;
     for(i=0;i<stepLimit;i++)
     {
-        let decesion = gw.decision( location.x, location.y, policy,0.001);
+        let decesion = gw.decision( location.x, location.y, policy,0.01,1);
         if(Math.abs(decesion[0])>Math.abs(decesion[1]))
         {
             location.y+=(decesion[0]<0)?-1:1;
@@ -97,7 +125,7 @@ function getEnvFeedBack(policy,stepLimit=300)
     
         let reward = gw.reward(location.x, location.y);
         score+=reward+0.001;
-        if(reward!=0)break;
+        if(reward<0)break;
 
     }
     //if(i==stepLimit)reward+=-10;
@@ -121,10 +149,11 @@ function generate_creatures(count,scale=0.1)
     return creatures
 }
 
-let creatures=generate_creatures(130);
+let creatures=generate_creatures(350);
 
 
 
+let GlobalTopList=[];
 function EVOLVE()
 {
 
@@ -141,19 +170,24 @@ function EVOLVE()
     let leastAcceptedScore = creatures[topN].y;
     let topN_List=creatures.slice(0, topN);
 
+    GlobalTopList = GlobalTopList.concat(JSON.parse(JSON.stringify(topN_List)));
+    GlobalTopList.sort(function(a, b){return b.y-a.y});
+    GlobalTopList=GlobalTopList.slice(0, topN);
+
+
     drawPlot(gw,creatures);
     let topScore = topN_List[0].y;
 
-    console.log("top:"+topScore, "mid:"+leastAcceptedScore);
+    console.log("top:"+topScore.toFixed(2), "mid:"+leastAcceptedScore.toFixed(2));
     
     creatures=creatures.map(
         (body,idx)=>{
             if(idx>topN)
             {
-                let parent1=topN_List[Math.floor(Math.random()*topN)].x;
-                let parent2=topN_List[Math.floor(Math.random()*topN)].x;
+                let parent1=GlobalTopList[Math.floor(Math.random()*GlobalTopList.length)].x;
+                let parent2=GlobalTopList[Math.floor(Math.random()*GlobalTopList.length)].x;
                 body.x = gw.Policy_Mix(body.x,[parent1,parent2]);
-                body.x = gw.Policy_Mutate(body.x,body.x,0.02,0.05,0.1);
+                body.x = gw.Policy_Mutate(body.x,body.x,0.001,0.2,0.03);
             }
             body.y=0;
             return body;
@@ -164,6 +198,7 @@ function EVOLVE()
 
 function ResetCreature()
 {
+    GlobalTopList=[];
     creatures=generate_creatures(150);
 }
 function NextStep()
@@ -175,7 +210,7 @@ var AutoHdl=null;
 function ToggleAuto()
 {
     if(AutoHdl == null)
-        AutoHdl= setInterval(EVOLVE, 100);
+        AutoHdl= setInterval(EVOLVE, 10);
     else
     {
         clearInterval(AutoHdl);
