@@ -1,9 +1,32 @@
 
 var canvas = document.getElementById("myGridWorld");
 var ctx = canvas.getContext("2d");
+
+let gw = new GridWorld([
+    [0,0,-1000,0,  0,0,0,-1],
+    [0,0,-1000,0, 10,0,0,-1],
+    [0,0,-1000,0,-10,0,0,-1],
+    [0,0,-1000,0,-10,0,0,-1],
+    [0,0,  0,0,-10,0,0,-1],
+]);
+let heatMap=[
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+];
 function drawPlot(env,creature)
 {
-
+    let heatmapMax=0;
+    for(let i=0;i<heatMap.length;i++)
+    {
+        for(let j=0;j<heatMap[i].length;j++)
+        {
+            if(heatmapMax<heatMap[i][j])
+                heatmapMax=heatMap[i][j];
+        }
+    }
     ctx.fillStyle = "#FF0000";
     let gridXC = env.theWorld[0].length;
     let gridYC = env.theWorld.length;
@@ -58,6 +81,16 @@ function drawPlot(env,creature)
             'rgb(' + reward + ','+reward+','+reward+')';
         
             ctx.fillRect(cellW*j,cellH*i,cellW,cellH);
+
+            if(heatMap[i][j]>0)
+            {
+                let RGB=hsvToRgb(0.7*(1-(heatMap[i][j]/heatmapMax)), 1, 1);
+    
+                ctx.fillStyle =
+                'rgba(' + RGB[0] + ','+RGB[1]+','+RGB[2]+',0.3)';
+                ctx.fillRect(cellW*j,cellH*i,cellW,cellH);
+            }
+
             ctx.beginPath();
             ctx.moveTo(cellW*(j+0.5),cellH*(i+0.5));
             let normalVal=Math.hypot(decesion[1],decesion[0]);
@@ -70,13 +103,6 @@ function drawPlot(env,creature)
     }
 }
 
-let gw = new GridWorld([
-    [0,0,-10,0,0,0,0,-1],
-    [0,0,0,0,0,0,0,-1],
-    [0,0,-10,0,-10,0,0,-1],
-    [0,0,-10,0,10,0,0,-1],
-    [0,0,-10,0,10,0,0,-1],
-]);
 
 function getEnvFeedBack(policy,stepLimit=300)
 {
@@ -85,7 +111,7 @@ function getEnvFeedBack(policy,stepLimit=300)
     let i;
     for(i=0;i<stepLimit;i++)
     {
-        let decesion = gw.decision( location.x, location.y, policy,0.001);
+        let decesion = gw.decision( location.x, location.y, policy,0.1);
         if(Math.abs(decesion[0])>Math.abs(decesion[1]))
         {
             location.y+=(decesion[0]<0)?-1:1;
@@ -94,10 +120,16 @@ function getEnvFeedBack(policy,stepLimit=300)
         {
             location.x+=(decesion[1]<0)?-1:1;
         }
-    
         let reward = gw.reward(location.x, location.y);
+
+        if(reward>-1000)
+        {
+            heatMap[location.y][location.x]+=1;
+        }
+
+
         score+=reward+0.001;
-        if(reward!=0)break;
+        if(reward<-1000)break;
 
     }
     //if(i==stepLimit)reward+=-10;
@@ -114,7 +146,6 @@ function generate_creatures(count,scale=0.1)
     let creatures=[];
     for(let i=0;i<count;i++)
     {
-        
         let policy = gw.RandomPolicy_Init(scale);
         creatures.push({x:policy,y:0});
     }
@@ -127,7 +158,13 @@ let creatures=generate_creatures(130);
 
 function EVOLVE()
 {
-
+    for(let i=0;i<heatMap.length;i++)
+    {
+        for(let j=0;j<heatMap[i].length;j++)
+        {
+            heatMap[i][j]=0;
+        }
+    }
     creatures=creatures.map(
         (body)=>{
             body.y=getEnvFeedBack(body.x);
@@ -153,7 +190,7 @@ function EVOLVE()
                 let parent1=topN_List[Math.floor(Math.random()*topN)].x;
                 let parent2=topN_List[Math.floor(Math.random()*topN)].x;
                 body.x = gw.Policy_Mix(body.x,[parent1,parent2]);
-                body.x = gw.Policy_Mutate(body.x,body.x,0.02,0.05,0.1);
+                body.x = gw.Policy_Mutate(body.x,body.x,0.1,0.05,0.5);
             }
             body.y=0;
             return body;
