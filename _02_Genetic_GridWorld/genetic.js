@@ -165,12 +165,12 @@ function EVOLVE()
             heatMap[i][j]=0;
         }
     }
-    creatures=creatures.map(
-        (body)=>{
-            body.y=getEnvFeedBack(body.x);
-            return body;
-        }
-    );
+    for(let i=0;i<creatures.length;i++)
+    {
+        let body = creatures[i];
+        body.y=getEnvFeedBack(body.x);
+
+    }
     //drawPlot(worldEnv,creatures);
 
     creatures.sort(function(a, b){return b.y-a.y});
@@ -183,19 +183,19 @@ function EVOLVE()
 
     console.log("top:"+topScore, "mid:"+leastAcceptedScore);
     
-    creatures=creatures.map(
-        (body,idx)=>{
-            if(idx>topN)
-            {
-                let parent1=topN_List[Math.floor(Math.random()*topN)].x;
-                let parent2=topN_List[Math.floor(Math.random()*topN)].x;
-                body.x = gw.Policy_Mix(body.x,[parent1,parent2]);
-                body.x = gw.Policy_Mutate(body.x,body.x,0.2,0.01,0.5);
-            }
-            body.y=0;
-            return body;
+    for(let idx=0;idx<creatures.length;idx++)
+    {
+
+        let body = creatures[idx];
+        if(idx>topN)
+        {
+            let parent1=topN_List[Math.floor(Math.random()*topN)].x;
+            let parent2=topN_List[Math.floor(Math.random()*topN)].x;
+            body.x = gw.Policy_Mix(body.x,[parent1,parent2]);
+            body.x = gw.Policy_Mutate(body.x,body.x,0.2,0.01,0.5);
         }
-    );
+        body.y=0;
+    }
 }
 
 
