@@ -4,9 +4,9 @@ var ctx = canvas.getContext("2d");
 
 let gw = new GridWorld([
     [0,0,-1000,0,  0,0,0,1],
-    [0,0,-1000,0, -10,0,0,10],
-    [0,0,-1000,0,-10,0,0,1],
-    [0,0,-1000,0,-10,0,0,1],
+    [0,0,-100,0, 0,0,0,10],
+    [0,0,-10,0,0,0,0,1],
+    [0,0,-1,0,0,0,0,1],
     [0,0, 0 ,0,0,0,0,1],
 ]);
 let heatMap=[
@@ -190,7 +190,7 @@ function EVOLVE()
                 let parent1=topN_List[Math.floor(Math.random()*topN)].x;
                 let parent2=topN_List[Math.floor(Math.random()*topN)].x;
                 body.x = gw.Policy_Mix(body.x,[parent1,parent2]);
-                body.x = gw.Policy_Mutate(body.x,body.x,0.07,0.01,0.5);
+                body.x = gw.Policy_Mutate(body.x,body.x,0.2,0.01,0.5);
             }
             body.y=0;
             return body;
