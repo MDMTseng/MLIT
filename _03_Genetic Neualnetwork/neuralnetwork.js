@@ -91,6 +91,95 @@ function NeuralNetForwardPass(input,network)
 }
 
 
-let network = CreateNeuralNet([3,5,6,7,1]);
-console.log(network);
-console.log(NeuralNetForwardPass([4,0.7,8.8798],network));
+
+
+function EVOLVE_NEURAL()
+{
+    for(let i=0;i<creatures.length;i++)
+    {
+        let body = creatures[i];
+        body.y=getEnvFeedBack(body.x);
+
+    }
+    //drawPlot(worldEnv,creatures);
+
+    creatures.sort(function(a, b){return b.y-a.y});
+    let topN=Math.floor(creatures.length*0.5);
+    let leastAcceptedScore = creatures[topN].y;
+    let topN_List=creatures.slice(0, topN);
+
+    //drawPlot(creatures);
+    let topScore = topN_List[0].y;
+
+    console.log("top:"+topScore, "mid:"+leastAcceptedScore);
+    //MaxScoreField.innerText = topScore;
+    //MidScoreField.innerText = leastAcceptedScore;
+    for(let idx=0;idx<creatures.length;idx++)
+    {
+
+        let body = creatures[idx];
+        let network = body.x;
+        if(idx>topN)
+        {
+            let parent1=topN_List[Math.floor(Math.random()*topN)].x;
+            let parent2=topN_List[Math.floor(Math.random()*topN)].x;
+            for(let i=0;i<network.layers.length;i++)
+            {
+                let layer = network.layers[i];
+                for(let j=0;j<layer.nodes.length;j++)
+                {
+                    let node = layer.nodes[j];
+                    for(let k=0;k<node.w.length;k++)
+                    {
+                        let w = node.w[k];
+
+                        node.w[k] = (
+                            parent1.layers[i].nodes[j].w[k] + 
+                            parent2.layers[i].nodes[j].w[k])/2;
+
+                        node.w[k]+=random(1);
+                    }
+
+                }
+
+            }
+
+        }
+        
+
+        //body.y=0;
+    }
+}
+
+function getEnvFeedBack(network)
+{
+    let error=0;
+    for(let i=0;i<10;i++)
+    {
+        let targetOutput = i*i;
+        let output = NeuralNetForwardPass([i],network);
+        output = output[0];
+        error += (output-targetOutput)*(output-targetOutput);
+    }
+    return -error;
+}
+
+
+function generate_creatures(count,scale=0.1)
+{
+    let creatures=[];
+    for(let i=0;i<count;i++)
+    {
+        creatures.push({x:CreateNeuralNet([1,5,6,7,1]),y:0});
+    }
+    return creatures;
+}
+
+
+let creatures = generate_creatures(100);
+for(let i=0;i<500;i++)
+{
+    EVOLVE_NEURAL();
+}
+console.log(creatures);
+
