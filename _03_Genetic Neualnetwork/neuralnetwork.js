@@ -1,4 +1,13 @@
 
+function drawPlot(p1,p2)
+{
+    setPlot(WorldPlot,1,p1);
+    setPlot(WorldPlot,0,p2);
+    setPlotYLimit(WorldPlot,0,{min:0,max:100});
+    setPlotYLimit(WorldPlot,1,{min:0,max:100});
+    WorldPlot.update();
+}
+
 
 function random(scale=1)
 {
@@ -119,7 +128,6 @@ function EVOLVE_NEURAL()
 
         let body = creatures[idx];
         let network = body.x;
-        if(idx>topN)
         {
             let parent1=topN_List[Math.floor(Math.random()*topN)].x;
             let parent2=topN_List[Math.floor(Math.random()*topN)].x;
@@ -132,12 +140,16 @@ function EVOLVE_NEURAL()
                     for(let k=0;k<node.w.length;k++)
                     {
                         let w = node.w[k];
+                        
+                        if(idx>topN)
+                        {
+                            node.w[k] = (
+                                parent1.layers[i].nodes[j].w[k] + 
+                                parent2.layers[i].nodes[j].w[k])/2;
+                            node.w[k]+=random(1);
+                        }
 
-                        node.w[k] = (
-                            parent1.layers[i].nodes[j].w[k] + 
-                            parent2.layers[i].nodes[j].w[k])/2;
-
-                        node.w[k]+=random(1);
+                        node.w[k]+=random(0.04);
                     }
 
                 }
@@ -151,13 +163,20 @@ function EVOLVE_NEURAL()
     }
 }
 
+function targetFunction(input)
+{
+    let tmp = (input/10.0-0.5);
+    return (tmp*tmp)*100;
+}
 function getEnvFeedBack(network)
 {
     let error=0;
-    for(let i=0;i<10;i++)
+
+    for(let i=0;i<100;i++)
     {
-        let targetOutput = i*i;
-        let output = NeuralNetForwardPass([i],network);
+        let input=i/10.0;
+        let targetOutput = targetFunction(input);
+        let output = NeuralNetForwardPass([input],network);
         output = output[0];
         error += (output-targetOutput)*(output-targetOutput);
     }
@@ -177,9 +196,32 @@ function generate_creatures(count,scale=0.1)
 
 
 let creatures = generate_creatures(100);
-for(let i=0;i<500;i++)
-{
-    EVOLVE_NEURAL();
-}
-console.log(creatures);
 
+
+
+function testBestFit()
+{
+    let data=[];
+    let pred=[];
+
+    for(let i=0;i<100;i++)
+    {
+        let input=i/10.0;
+        let targetOutput = targetFunction(input);
+        let output = NeuralNetForwardPass([input],creatures[0].x);
+        output = output[0];
+        data.push({x:input,y:targetOutput});
+        pred.push({x:input,y:output});
+    }
+
+    drawPlot(data,pred);
+}
+
+
+setInterval(()=>{
+    for(let i=0;i<1;i++)
+        EVOLVE_NEURAL();   
+    testBestFit();
+},100)
+
+console.log(creatures);
