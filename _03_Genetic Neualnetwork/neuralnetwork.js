@@ -166,7 +166,10 @@ function EVOLVE_NEURAL()
 function targetFunction(input)
 {
     let tmp = (input/10.0-0.5);
-    return (tmp*tmp)*100;
+    let output1 =Math.sin(tmp*10)*20+40;
+    let output2 =tmp*100+40;
+
+    return [output1,output2];
 }
 function getEnvFeedBack(network)
 {
@@ -177,8 +180,8 @@ function getEnvFeedBack(network)
         let input=i/10.0;
         let targetOutput = targetFunction(input);
         let output = NeuralNetForwardPass([input],network);
-        output = output[0];
-        error += (output-targetOutput)*(output-targetOutput);
+        error += Math.pow(output[0]-targetOutput[0],2)*4+
+                 Math.pow(output[1]-targetOutput[1],2);
     }
     return -error;
 }
@@ -189,7 +192,7 @@ function generate_creatures(count,scale=0.1)
     let creatures=[];
     for(let i=0;i<count;i++)
     {
-        creatures.push({x:CreateNeuralNet([1,5,6,7,1]),y:0});
+        creatures.push({x:CreateNeuralNet([1,5,6,17,2]),y:0});
     }
     return creatures;
 }
@@ -198,20 +201,24 @@ function generate_creatures(count,scale=0.1)
 let creatures = generate_creatures(100);
 
 
-
+let tmpC =0;
+function ChangePlot()
+{
+    
+    tmpC+=1;
+    if(tmpC>1)tmpC=0;
+}
 function testBestFit()
 {
     let data=[];
     let pred=[];
-
     for(let i=0;i<100;i++)
     {
         let input=i/10.0;
         let targetOutput = targetFunction(input);
         let output = NeuralNetForwardPass([input],creatures[0].x);
-        output = output[0];
-        data.push({x:input,y:targetOutput});
-        pred.push({x:input,y:output});
+        data.push({x:input,y:targetOutput[tmpC]});
+        pred.push({x:input,y:output[tmpC]});
     }
 
     drawPlot(data,pred);
