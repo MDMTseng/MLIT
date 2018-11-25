@@ -102,7 +102,7 @@ function NeuralNetForwardPass(input,network)
 
 
 
-function EVOLVE_NEURAL()
+function EVOLVE_NEURAL(doprint=false)
 {
     for(let i=0;i<creatures.length;i++)
     {
@@ -119,8 +119,8 @@ function EVOLVE_NEURAL()
 
     //drawPlot(creatures);
     let topScore = topN_List[0].y;
-
-    console.log("top:"+topScore, "mid:"+leastAcceptedScore);
+    if(doprint)
+        console.log("top:"+topScore, "mid:"+leastAcceptedScore);
     //MaxScoreField.innerText = topScore;
     //MidScoreField.innerText = leastAcceptedScore;
     for(let idx=0;idx<creatures.length;idx++)
@@ -151,12 +151,21 @@ function EVOLVE_NEURAL()
                             if(Math.random()>0.99)
                                 node.w[k]+=random(1);
                             node.w[k]+=random(0.06);
-                            node.w[k] -=Math.sign(node.w[k])*0.001;
-                            node.w[k] *=0.99;
+                            node.w[k] *=0.999;
+                            let L1_p=0.005;
+                            if(Math.abs(node.w[k])>L1_p)
+                                node.w[k] -=Math.sign(node.w[k])*L1_p;
+                            else
+                            {
+                                node.w[k] =0;
+                            }
                         }
+                        if(idx!=0)
+                            node.w[k]+=random(0.001);
 
-                        node.w[k]+=random(0.001);
                     }
+                    
+                    
 
                 }
 
@@ -213,6 +222,13 @@ function ChangePlot()
     
     tmpC+=1;
     if(tmpC>1)tmpC=0;
+}
+function PrintBest()
+{
+    console.log(JSON.parse(JSON.stringify(creatures[0])));
+
+    EVOLVE_NEURAL(true);   
+
 }
 function testBestFit()
 {
