@@ -3,8 +3,8 @@ function drawPlot(p1,p2)
 {
     setPlot(WorldPlot,1,p1);
     setPlot(WorldPlot,0,p2);
-    setPlotYLimit(WorldPlot,0,{min:0,max:100});
-    setPlotYLimit(WorldPlot,1,{min:0,max:100});
+    setPlotYLimit(WorldPlot,0,{min:0,max:10});
+    setPlotYLimit(WorldPlot,1,{min:0,max:10});
     WorldPlot.update();
 }
 
@@ -113,7 +113,7 @@ function EVOLVE_NEURAL()
     //drawPlot(worldEnv,creatures);
 
     creatures.sort(function(a, b){return b.y-a.y});
-    let topN=Math.floor(creatures.length*0.5);
+    let topN=Math.floor(creatures.length*0.1);
     let leastAcceptedScore = creatures[topN].y;
     let topN_List=creatures.slice(0, topN);
 
@@ -129,8 +129,8 @@ function EVOLVE_NEURAL()
         let body = creatures[idx];
         let network = body.x;
         {
-            let parent1=topN_List[Math.floor(Math.random()*topN)].x;
-            let parent2=topN_List[Math.floor(Math.random()*topN)].x;
+            let parent1=topN_List[Math.floor(Math.random()*topN)];
+            let parent2=topN_List[Math.floor(Math.random()*topN)];
             for(let i=0;i<network.layers.length;i++)
             {
                 let layer = network.layers[i];
@@ -143,13 +143,19 @@ function EVOLVE_NEURAL()
                         
                         if(idx>topN)
                         {
+
                             node.w[k] = (
-                                parent1.layers[i].nodes[j].w[k] + 
-                                parent2.layers[i].nodes[j].w[k])/2;
-                            node.w[k]+=random(1);
+                                parent1.x.layers[i].nodes[j].w[k]*parent1.y + 
+                                parent2.x.layers[i].nodes[j].w[k]*parent2.y)/(parent1.y+parent2.y);
+
+                            if(Math.random()>0.9)
+                                node.w[k]+=random(1);
+                            node.w[k]+=random(0.06);
+                            node.w[k] -=Math.sign(node.w[k])*0.001;
+                            node.w[k] *=0.99;
                         }
 
-                        node.w[k]+=random(0.04);
+                        node.w[k]+=random(0.001);
                     }
 
                 }
@@ -166,8 +172,8 @@ function EVOLVE_NEURAL()
 function targetFunction(input)
 {
     let tmp = (input/10.0-0.5);
-    let output1 =Math.sin(tmp*10)*20+40;
-    let output2 =tmp*100+40;
+    let output1 =Math.sin(tmp*10)*2+4;
+    let output2 =tmp*10+10;
 
     return [output1,output2];
 }
@@ -177,7 +183,7 @@ function getEnvFeedBack(network)
 
     for(let i=0;i<100;i++)
     {
-        let input=i/10.0;
+        let input=(i-50)/10.0;
         let targetOutput = targetFunction(input);
         let output = NeuralNetForwardPass([input],network);
         error += Math.pow(output[0]-targetOutput[0],2)*4+
@@ -192,13 +198,13 @@ function generate_creatures(count,scale=0.1)
     let creatures=[];
     for(let i=0;i<count;i++)
     {
-        creatures.push({x:CreateNeuralNet([1,5,6,17,2]),y:0});
+        creatures.push({x:CreateNeuralNet([1,6,6,6,6,2]),y:0});
     }
     return creatures;
 }
 
 
-let creatures = generate_creatures(100);
+let creatures = generate_creatures(70);
 
 
 let tmpC =0;
@@ -214,7 +220,7 @@ function testBestFit()
     let pred=[];
     for(let i=0;i<100;i++)
     {
-        let input=i/10.0;
+        let input=(i-50)/10.0;
         let targetOutput = targetFunction(input);
         let output = NeuralNetForwardPass([input],creatures[0].x);
         data.push({x:input,y:targetOutput[tmpC]});
@@ -226,7 +232,7 @@ function testBestFit()
 
 
 setInterval(()=>{
-    for(let i=0;i<1;i++)
+    for(let i=0;i<10;i++)
         EVOLVE_NEURAL();   
     testBestFit();
 },100)
