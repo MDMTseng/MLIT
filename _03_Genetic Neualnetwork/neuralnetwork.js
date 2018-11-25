@@ -148,7 +148,7 @@ function EVOLVE_NEURAL()
                                 parent1.x.layers[i].nodes[j].w[k]*parent1.y + 
                                 parent2.x.layers[i].nodes[j].w[k]*parent2.y)/(parent1.y+parent2.y);
 
-                            if(Math.random()>0.9)
+                            if(Math.random()>0.99)
                                 node.w[k]+=random(1);
                             node.w[k]+=random(0.06);
                             node.w[k] -=Math.sign(node.w[k])*0.001;
