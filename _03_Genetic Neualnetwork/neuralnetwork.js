@@ -178,8 +178,6 @@ function EVOLVE_NEURAL(doprint=false)
     }
 }
 
-
-/*
 function targetFunction(input)
 {
     let tmp = (input/10.0-0.5);
@@ -255,4 +253,4 @@ setInterval(()=>{
     testBestFit();
 },100)
 
-console.log(creatures);*/
+console.log(creatures);

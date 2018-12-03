@@ -102,16 +102,9 @@ function NeuralNetForwardPass(input,network)
 
 
 
-function EVOLVE_NEURAL(doprint=false)
+function EVOLVE_NEURAL(creatures , doprint=false)
 {
-    for(let i=0;i<creatures.length;i++)
-    {
-        let body = creatures[i];
-        body.y=getEnvFeedBack(body.x);
-
-    }
-    //drawPlot(worldEnv,creatures);
-
+    console.log(creatures);
     creatures.sort(function(a, b){return b.y-a.y});
     let topN=Math.floor(creatures.length*0.1);
     let leastAcceptedScore = creatures[topN].y;
@@ -177,7 +170,7 @@ function EVOLVE_NEURAL(doprint=false)
         //body.y=0;
     }
 }
-
+/*
 function targetFunction(input)
 {
     let tmp = (input/10.0-0.5);
@@ -253,4 +246,4 @@ setInterval(()=>{
     testBestFit();
 },100)
 
-console.log(creatures);
+console.log(creatures);*/
