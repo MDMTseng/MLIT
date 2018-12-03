@@ -5,6 +5,7 @@ function Bird(){
   this.lift = -16
   this.velocity = 0
   
+  this.brain = {x:CreateNeuralNet([2,6,6,2]),y:0};
   this.show = function(){
     fill(255)
     ellipse(this.x, this.y, 32, 32 )
@@ -32,15 +33,30 @@ function Bird(){
     
   }
   
+  this.neuralInput=null;
   this.checkObstacle = function(obstacles){
+    let minDist = 100000000;
+    let hit =false;
     obstacles.forEach((obstacle)=>{
+      let opos = obstacle.holePosition();
+      let dist = Math.hypot(opos.x - this.x ,opos.y - this.y );
+      
+      if(minDist>dist)minDist = dist;
       if(obstacle.hits(this))
       {
-        return true;
+        hit =  true;
       }
     });
-    return false;
+    this.neuralInput = [this.y,minDist];
+    //console.log(this.y,minDist);
+    return hit;
   }
+  this.decision = function(){
+    
+    return hit;
+  }
+
+
 }
 
 function Obstacle(){
@@ -68,6 +84,9 @@ function Obstacle(){
         return this.x < -this.w
     }
     
+    this.holePosition = function(){
+      return {x:this.x + this.w/2,y: this.gapStart + this.gapLength/2};
+    }  
     this.hits = function(bird){
         if (bird.y < this.gapStart || bird.y > this.gapStart + this.gapLength) {
             if (bird.x > this.x && bird.x < this.x + this.w) {
@@ -97,7 +116,7 @@ function setup(){
   for(let i=0;i<10;i++)
   {
     let bird =new Bird();
-    bird.gravity=Math.random()*0.5+0.1;
+    //bird.gravity=Math.random()*0.5+0.1;
     birds.push(bird);
   }
 }
@@ -116,7 +135,7 @@ function draw(){
   });
   // background('#FF0000')
   
-  if (frameCount % 100 == 0) {
+  if (frameCount % 50 == 0) {
       obstacles.push(new Obstacle())
   }  
   
