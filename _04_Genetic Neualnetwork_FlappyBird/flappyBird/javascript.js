@@ -206,10 +206,7 @@ function draw(){
   fill(0, 0, 255)
   textSize(20)
   textFont("Helvetica")
-  text('Obstacles Cleared: ' + pipesCleared, 20, 20)
-  text('Obstacle Damage: ' + obstaclesHit, 20, 40)
-  text('Play Quality: ' + String(1 + (pipesCleared / obstaclesHit) || 4).substring(0, 4) + '/5', 20, 60)
-
+  text('Birds alive: ' + birdsInGame.length, 20, 20)
   birdsInGame.forEach((bird)=>{
     bird.show()
   });
