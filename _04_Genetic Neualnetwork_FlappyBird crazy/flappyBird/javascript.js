@@ -1,11 +1,11 @@
 function Bird(){
   this.y = height / 2
   this.x = 64
-  this.gravity = 0.6
-  this.lift = -16
+  this.gravity = 1
+  this.lift = -10
   this.velocity = 0
   
-  this.brain = {x:CreateNeuralNet([2,6,6,2]),y:0};
+  this.brain = {x:CreateNeuralNet([6*3,10,2]),y:0};
   this.show = function(){
     fill(255)
     ellipse(this.x, this.y, 32, 32 )
@@ -37,20 +37,51 @@ function Bird(){
   }
   
   this.neuralInput=null;
+  this.histInfo=[0,0,0,0,0,0]
+  this.histInfo2=[0,0,0,0,0,0]
   this.checkObstacle = function(obstacles){
     let minDist = 100000000;
+    let minOpos = {};
+    let min2ndDist = 100000000;
+    let min2ndOpos = {};
     let hit =false;
     obstacles.forEach((obstacle)=>{
       let opos = obstacle.holePosition();
       let dist = Math.hypot(opos.x - this.x ,opos.y - this.y );
       
-      if(minDist>dist)minDist = dist;
+      if(minDist>dist)
+      {
+        minOpos = opos;
+        minDist = dist;
+
+      }
+      else
+      {
+        if(min2ndDist>dist)
+        {
+          min2ndOpos = opos;
+          min2ndDist = dist;
+  
+        }
+      }
+
       if(obstacle.hits(this))
       {
         hit =  true;
       }
     });
-    this.neuralInput = [this.y,minDist];
+    let cur_info = [
+      this.y,
+      minDist,
+      minOpos.x - this.x ,
+      minOpos.y - this.y,
+      min2ndOpos.x - this.x ,
+      min2ndOpos.y - this.y,
+    ];
+    this.neuralInput=cur_info.map((x)=>x).concat(this.histInfo).concat(this.histInfo2);
+
+    this.histInfo2 = this.histInfo;
+    this.histInfo = cur_info;
     //console.log(this.y,minDist);
     return hit;
   }
@@ -67,12 +98,14 @@ function Bird(){
 
 function Obstacle(){
     this.x = width
-    this.w = 30
-    this.topMin = 150
-    this.botMin = height - 150
+    this.w = 50
+    this.topMin = 50
+    this.botMin = height - 100
     this.gapStart = random(this.topMin, this.botMin)
-    this.gapLength = 150
-    this.speed = 3
+    this.gapLength = 120
+    this.speed = 6
+    
+    this.loopT = random(0, 100000)
     
     
     this.show = function(){
@@ -84,14 +117,16 @@ function Obstacle(){
         rect(this.x, this.gapStart + this.gapLength, this.w, height)
     }
     this.update = function(timeScale =1){
-        this.x -= this.speed *timeScale       
+      let speed = this.speed+3*Math.sin(this.loopT/10);
+        this.x -= speed *timeScale       
+        this.loopT+=1;
     }
     this.offscreen = function(){
         return this.x < -this.w
     }
     
     this.holePosition = function(){
-      return {x:this.x + this.w/2,y: this.gapStart + this.gapLength};
+      return {x:this.x + this.w/2,y: this.gapStart + this.gapLength/2};
     }  
     this.hits = function(bird){
         if (bird.y < this.gapStart || bird.y > this.gapStart + this.gapLength) {
@@ -119,15 +154,18 @@ var obstacles = []
 var birds=[]
 var birdsInGame=[]
 var pipesCleared
-var obstaclesHit
+var bestScore
+var preScore
 var playQuality
 
+var generation = 0 ;
 function setup(){
   var canvas = createCanvas(800, 400)
   canvas.parent('jumbo-canvas')
   pipesCleared = 0
-  obstaclesHit = 0
-  playQuality = 10
+  generation = 0 
+  bestScore = 0
+  preScore = 0
   obstacles.push(new Obstacle())
 
   for(let i=0;i<100;i++)
@@ -147,16 +185,16 @@ function gameUpdate(timeScale=1)
   });
   // background('#FF0000')
   
-  if (gameFrameCount % 50 == 0) {
+  if (gameFrameCount % 40 == 0) {
       obstacles.push(new Obstacle())
   }  
   
   for (var i = obstacles.length - 1; i >= 0; i--){
       obstacles[i].update(timeScale)
       
-
       if (obstacles[i].offscreen()){
           obstacles.splice(i, 1)
+          pipesCleared++;
       }     
   }
   
@@ -195,6 +233,13 @@ function gameUpdate(timeScale=1)
 
     obstacles=[];
     gameFrameCount=0;
+    if(bestScore<pipesCleared)
+    {
+      bestScore = pipesCleared;
+    }
+    preScore = pipesCleared;
+    pipesCleared=0;
+    generation++;
   }
   gameFrameCount++;
 }
@@ -207,6 +252,10 @@ function draw(){
   textSize(20)
   textFont("Helvetica")
   text('Birds alive: ' + birdsInGame.length, 20, 20)
+  text('pipesCleared: ' + pipesCleared, 20, 40)
+  text('generation: ' + generation, 20, 60)
+  text('bestScore: ' +bestScore+ " pre:"+preScore, 20, 80)
+  
   birdsInGame.forEach((bird)=>{
     bird.show()
   });
@@ -219,7 +268,7 @@ function draw(){
 
 function HightSpeed()
 {
-  gameSpeed=100;
+  gameSpeed+=40;
 }
 
 function NormalSpeed()
