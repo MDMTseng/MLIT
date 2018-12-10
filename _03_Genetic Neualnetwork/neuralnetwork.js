@@ -37,12 +37,14 @@ function CreateNeuralNetLayer(previousNodeCount,NodeCount)
 
     let arr = [];
     let node_value = [];
+    let gradient = [];
     for(let i=0;i<NodeCount;i++)
     {
         arr.push(CreateNeuralNode(previousNodeCount));
         node_value.push(0);
+        gradient.push(0);
     }
-    return {nodes:arr,node_value:node_value}
+    return {nodes:arr,node_value:node_value,gradient:gradient}
 }
 function CreateNeuralNet(network_shape)
 {
@@ -99,6 +101,54 @@ function NeuralNetForwardPass(input,network)
     return network.layers[network.layers.length-1].node_value;
 }
 
+
+
+
+
+function nodeBackProp(preLayer,currentNode,outGradient)
+{
+    let i=0;
+    for(i=0;i<preLayer.node_value.length;i++)
+    {
+        preLayer.gradient[i]=preLayer.node_value[i]*outGradient;
+    }
+    preLayer.gradient[i]=outGradient
+}
+
+
+function layerProp(preLayer,currentLayer,outGradients)
+{
+    //Create complete network
+    let pred_output = NeuralNetForwardPass(input,network);
+
+    
+    for(i=0;i<currentLayer.nodes.length;i++)
+    {
+        currentLayer.node_value[i]=
+            NeuralNetNodeForwardPass(preLayer,currentLayer.nodes[i]);
+    }
+
+    return ;
+}
+
+
+
+function backProp(input,network,target_output)
+{
+    //Create complete network
+    let pred_output = NeuralNetForwardPass(input,network);
+    let gradient =[];
+    for(let i=0;i<pred_output.length;i++)
+    {
+        gradient.push(target_output[i] - pred_output[i]);
+    }
+    
+    for(let i=network.layers.length-1;i>=0;i--)
+    {
+        
+    }
+    return ;
+}
 
 
 
@@ -226,9 +276,18 @@ function ChangePlot()
 function PrintBest()
 {
     console.log(JSON.parse(JSON.stringify(creatures[0])));
-
+    downloadObjectAsJson(JSON.stringify(creatures[0]),"xxxx.json");
     EVOLVE_NEURAL(true);   
 
+}
+function downloadObjectAsJson(exportObj, exportName){
+    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj));
+    var downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", exportName + ".json");
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
 }
 function testBestFit()
 {
