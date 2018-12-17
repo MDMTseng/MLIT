@@ -46,7 +46,7 @@ function CreateNeuralNetLayer(previousNodeCount,NodeCount)
         node_value.push(0);
         node_gradient.push(0);
     }
-    return {nodes:arr,node_value:node_value,node_gradient:node_gradientnodes}
+    return {nodes:arr,node_value:node_value,node_gradient:node_gradient}
 }
 function CreateNeuralNet(network_shape)
 {
@@ -142,21 +142,24 @@ function nodeGradientBackProp(curNodeIdx,nextLayer)
     return totalGradient;
 }
 
-function backProp(input,network,target_output)
+function backProp(input,network,target_output,alpha)
 {
     //Create complete network
     let pred_output = NeuralNetForwardPass(input,network);
     let gradient =[];
+    let error=0;
     for(let i=0;i<pred_output.length;i++)
     {
-        gradient.push(target_output[i] - pred_output[i]);
+        let diff = pred_output[i]-target_output[i] ;
+        gradient.push(diff);
+        error+=diff*diff;
     }
     
     for(let i=network.layers.length-1;i>=1;i--)
     {
         let layer = network.layers[i];
         let prelayer = network.layers[i-1];
-        for(let j=0;i<layer.node_gradient.length;j++)
+        for(let j=0;j<layer.node_gradient.length;j++)
         {
             if( i<network.layers.length-1)
             {
@@ -174,11 +177,10 @@ function backProp(input,network,target_output)
         layerBackProp(prelayer,layer);
     }
 
-    let alpha = 0.01;
     for(let i=0;i<network.layers.length;i++)
     {
         let layer = network.layers[i];
-        for(let j=0;i<layer.nodes.length;j++)
+        for(let j=0;j<layer.nodes.length;j++)
         {
             let node = layer.nodes[j];
             for(let k=0;k<node.w.length;k++)
@@ -189,7 +191,7 @@ function backProp(input,network,target_output)
     }
 
 
-    return ;
+    return error ;
 }
 
 
@@ -349,9 +351,20 @@ function testBestFit()
 
 
 setInterval(()=>{
-    for(let i=0;i<10;i++)
+    for(let i=0;i<1;i++)
         EVOLVE_NEURAL();   
     testBestFit();
-},100)
+},10000)
+
+
+let netWork = CreateNeuralNet([1,6,6,6,6,2]);
+
+for(let i=0;i<10;i++)
+{
+    let input = [i/100.0-0.5];
+    let targetOutput = targetFunction(input[0]);
+    console.log(backProp(input,netWork,targetOutput,0.01));
+}
+
 
 console.log(creatures);
