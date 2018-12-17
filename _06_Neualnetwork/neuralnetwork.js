@@ -171,7 +171,7 @@ function backProp(input,network,target_output,alpha)
             }
             if(layer.node_value[j]<=0)
             {
-                layer.node_gradient[j]=0;
+                layer.node_gradient[j]*=0.1;
             }
         }
         layerBackProp(prelayer,layer);
@@ -359,11 +359,16 @@ setInterval(()=>{
 
 let netWork = CreateNeuralNet([1,6,6,6,6,2]);
 
-for(let i=0;i<10;i++)
+for(let j=0;j<1000;j++)
 {
-    let input = [i/100.0-0.5];
-    let targetOutput = targetFunction(input[0]);
-    console.log(backProp(input,netWork,targetOutput,0.01));
+    let error=0;
+    for(let i=0;i<100;i++)
+    {
+        let input = [i/100.0-0.5];
+        let targetOutput = targetFunction(input[0]);
+        error+=backProp(input,netWork,targetOutput,0.1);
+    }
+    console.log(error);
 }
 
 
