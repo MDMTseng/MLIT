@@ -14,7 +14,7 @@ function random(scale=1)
     return scale*2*(Math.random()-0.5);
 }
 
-function CreateNeuralNode(InputCount)
+function CreateNeuralNode(InputCount,mult=1)
 {
     //Create single node
     //Example:
@@ -22,11 +22,13 @@ function CreateNeuralNode(InputCount)
     //[0.23423, 0.56,  0.7,  0.3 ]
 
     let arr = [];
+    let dw = [];
     for(let i=0;i<InputCount+1;i++)
     {
-        arr.push(random(1));
+        arr.push(random(mult));
+        dw.push(0);
     }
-    return {w:arr}
+    return {w:arr,dw:dw};
 }
 function CreateNeuralNetLayer(previousNodeCount,NodeCount)
 {
@@ -37,14 +39,14 @@ function CreateNeuralNetLayer(previousNodeCount,NodeCount)
 
     let arr = [];
     let node_value = [];
-    let gradient = [];
+    let node_gradient = [];
     for(let i=0;i<NodeCount;i++)
     {
         arr.push(CreateNeuralNode(previousNodeCount));
         node_value.push(0);
-        gradient.push(0);
+        node_gradient.push(0);
     }
-    return {nodes:arr,node_value:node_value,gradient:gradient}
+    return {nodes:arr,node_value:node_value,node_gradient:node_gradientnodes}
 }
 function CreateNeuralNet(network_shape)
 {
@@ -105,33 +107,40 @@ function NeuralNetForwardPass(input,network)
 
 
 
-function nodeBackProp(preLayer,currentNode,outGradient)
+function nodeBackProp(preLayer,node,nodeGradient)
 {
     let i=0;
-    for(i=0;i<preLayer.node_value.length;i++)
+    for(i=0;i<node.w.length-1;i++)
     {
-        preLayer.gradient[i]=preLayer.node_value[i]*outGradient;
+        node.dw[i]=preLayer.node_value[i]*nodeGradient;
     }
-    preLayer.gradient[i]=outGradient
+    node.dw[i]=1*nodeGradient;
 }
 
 
-function layerProp(preLayer,currentLayer,outGradients)
+function layerBackProp(preLayer,currentLayer)
 {
-    //Create complete network
-    let pred_output = NeuralNetForwardPass(input,network);
-
-    
     for(i=0;i<currentLayer.nodes.length;i++)
     {
-        currentLayer.node_value[i]=
-            NeuralNetNodeForwardPass(preLayer,currentLayer.nodes[i]);
+        nodeBackProp(preLayer,currentLayer.nodes[i],currentLayer.node_gradient[i]);
     }
 
     return ;
 }
 
 
+function nodeGradientBackProp(curNodeIdx,nextLayer)
+{
+    let i=0;
+    let totalGradient=0;
+    for(i=0;i<nextLayer.nodes.length;i++)
+    {
+        totalGradient+=
+            nextLayer.nodes[i].w[curNodeIdx]*
+            nextLayer.node_gradient[i];
+    }
+    return totalGradient;
+}
 
 function backProp(input,network,target_output)
 {
@@ -143,10 +152,43 @@ function backProp(input,network,target_output)
         gradient.push(target_output[i] - pred_output[i]);
     }
     
-    for(let i=network.layers.length-1;i>=0;i--)
+    for(let i=network.layers.length-1;i>=1;i--)
     {
-        
+        let layer = network.layers[i];
+        let prelayer = network.layers[i-1];
+        for(let j=0;i<layer.node_gradient.length;j++)
+        {
+            if( i<network.layers.length-1)
+            {
+                layer.node_gradient[j]=nodeGradientBackProp(j,network.layers[i+1]);
+            }
+            else
+            {
+                layer.node_gradient[j]=gradient[j];
+            }
+            if(layer.node_value[j]<=0)
+            {
+                layer.node_gradient[j]=0;
+            }
+        }
+        layerBackProp(prelayer,layer);
     }
+
+    let alpha = 0.01;
+    for(let i=0;i<network.layers.length;i++)
+    {
+        let layer = network.layers[i];
+        for(let j=0;i<layer.nodes.length;j++)
+        {
+            let node = layer.nodes[j];
+            for(let k=0;k<node.w.length;k++)
+            {
+                node.w[k]-=node.dw[k]*alpha;
+            }
+        }
+    }
+
+
     return ;
 }
 
