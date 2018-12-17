@@ -171,7 +171,7 @@ function backProp(input,network,target_output,alpha)
             }
             if(layer.node_value[j]<=0)
             {
-                layer.node_gradient[j]*=0.1;
+                layer.node_gradient[j]*=0.01;
             }
         }
         layerBackProp(prelayer,layer);
@@ -333,7 +333,7 @@ function downloadObjectAsJson(exportObj, exportName){
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
 }
-function testBestFit()
+function testBestFit(network=creatures[0].x)
 {
     let data=[];
     let pred=[];
@@ -341,7 +341,7 @@ function testBestFit()
     {
         let input=(i-50)/10.0;
         let targetOutput = targetFunction(input);
-        let output = NeuralNetForwardPass([input],creatures[0].x);
+        let output = NeuralNetForwardPass([input],network);
         data.push({x:input,y:targetOutput[tmpC]});
         pred.push({x:input,y:output[tmpC]});
     }
@@ -350,26 +350,31 @@ function testBestFit()
 }
 
 
+/*
 setInterval(()=>{
     for(let i=0;i<1;i++)
         EVOLVE_NEURAL();   
     testBestFit();
-},10000)
+},10000)*/
 
 
 let netWork = CreateNeuralNet([1,6,6,6,6,2]);
 
-for(let j=0;j<1000;j++)
-{
-    let error=0;
-    for(let i=0;i<100;i++)
+setInterval(()=>{
+
+    for(let j=0;j<1;j++)
     {
-        let input = [i/100.0-0.5];
-        let targetOutput = targetFunction(input[0]);
-        error+=backProp(input,netWork,targetOutput,0.1);
+        let error=0;
+        for(let i=0;i<100;i++)
+        {
+            let input = [i/10.0-5];
+            let targetOutput = targetFunction(input[0]);
+            error+=backProp(input,netWork,targetOutput,0.001);
+        }
+        console.log(error);
     }
-    console.log(error);
-}
+    testBestFit(netWork);
 
 
+},10)
 console.log(creatures);
