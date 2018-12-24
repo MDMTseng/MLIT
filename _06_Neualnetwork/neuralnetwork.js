@@ -23,6 +23,23 @@ function act_Linear()
         grad:(val)=>1,
     }
 }
+function act_tanX()
+{
+    return {
+        func:(val)=>{
+            if(val>-1 && val<1)return val;
+            if(val>1)
+            {
+                return 1+0.1*(val-1);
+            }
+            return -1+0.1*(val+1);
+        },
+        grad:(val)=>{
+            if(val>-1 && val<1)return 1;
+            return 0.1;
+        },
+    }
+}
 
 function random(scale=1)
 {
@@ -76,7 +93,7 @@ function CreateNeuralNet(network_shape)
         layers.push(CreateNeuralNetLayer(network_shape[i-1],network_shape[i]));
         if(i==network_shape.length-1)
         {//Last layer
-            layers[layers.length-1].act = act_ReLu();
+            layers[layers.length-1].act = act_Linear();
         }
         else
             layers[layers.length-1].act = act_ReLu();
@@ -133,9 +150,9 @@ function nodeBackProp(preLayer,node,nodeGradient)
     let i=0;
     for(i=0;i<node.w.length-1;i++)
     {
-        node.dw[i]=preLayer.node_value[i]*nodeGradient;
+        node.dw[i]+=preLayer.node_value[i]*nodeGradient;
     }
-    node.dw[i]=1*nodeGradient;
+    node.dw[i]+=1*nodeGradient;
 }
 
 
@@ -163,7 +180,41 @@ function nodeGradientBackProp(curNodeIdx,nextLayer)
     return totalGradient;
 }
 
-function backProp(input,network,target_output,alpha)
+function dwReset(network)
+{
+
+    for(let i=0;i<network.layers.length;i++)
+    {
+        let layer = network.layers[i];
+        for(let j=0;j<layer.nodes.length;j++)
+        {
+            let node = layer.nodes[j];
+            for(let k=0;k<node.w.length;k++)
+            {
+                node.dw[k]=0;
+            }
+            //console.log(node.dw)
+        }
+    }
+}
+function dwUpdate(network,alpha)
+{
+    for(let i=0;i<network.layers.length;i++)
+    {
+        let layer = network.layers[i];
+        for(let j=0;j<layer.nodes.length;j++)
+        {
+            let node = layer.nodes[j];
+            for(let k=0;k<node.w.length;k++)
+            {
+                node.w[k]-=node.dw[k]*alpha;
+                node.w[k]*=0.999;
+            }
+            //console.log(node.dw)
+        }
+    }
+}
+function backProp(input,network,target_output)
 {
     //Create complete network
     let pred_output = NeuralNetForwardPass(input,network);
@@ -197,24 +248,12 @@ function backProp(input,network,target_output,alpha)
         layerBackProp(prelayer,layer);
     }
 
-    for(let i=0;i<network.layers.length;i++)
-    {
-        let layer = network.layers[i];
-        for(let j=0;j<layer.nodes.length;j++)
-        {
-            let node = layer.nodes[j];
-            for(let k=0;k<node.w.length;k++)
-            {
-                node.w[k]-=node.dw[k]*alpha;
-                //node.w[k]*=0.999;
-            }
-            //console.log(node.dw)
-        }
-    }
 
 
     return error ;
 }
+
+
 
 
 
@@ -323,7 +362,7 @@ function generate_creatures(count,scale=0.1)
     let creatures=[];
     for(let i=0;i<count;i++)
     {
-        creatures.push({x:CreateNeuralNet([1,6,6,6,6,2]),y:0});
+        creatures.push({x:CreateNeuralNet([1,10,10,2]),y:0});
     }
     return creatures;
 }
@@ -380,19 +419,22 @@ setInterval(()=>{
 },10000)*/
 
 
-let netWork = CreateNeuralNet([1,6,6,6,6,2]);
+let netWork = CreateNeuralNet([1,6,6,2]);
 
 setInterval(()=>{
 
     for(let j=0;j<1;j++)
     {
         let error=0;
+        dwReset(netWork);
         for(let i=0;i<100;i++)
         {
             let input = [i/10.0-5];
             let targetOutput = targetFunction(input[0]);
-            error+=backProp(input,netWork,targetOutput,0.002);
+
+            error+=backProp(input,netWork,targetOutput);
         }
+        dwUpdate(netWork,0.001);
         //console.log(error);
     }
     testBestFit(netWork);
