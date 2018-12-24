@@ -6,25 +6,11 @@ ctx.width = canvas.width=800;
 ctx.height = canvas.height=600;
 let gw = new GridWorld([
     [0,0,-1000,0,0,0,0,0],
-    [0,0,-10,  0,0,0,0,0],
+    [0,0,-10,  0,0,0,0,10],
     [0,0,-10,  0,-1,0,0,0],
     [0,0,-1,   0,-1,0,0,0],
-    [0,0,-1,   0,-1,0,0,0],
-    [0,0,-1,   0,-1,0,0,0],
-    [0,0,-1,   0,-1,0,0,0],
-    [0,0,-1,   0,-1,0,0,0],
-    [0,0,-1,   0, 0,0,0,0],
-    [0,0,-1,   0,-1,0,0,0],
-    [0,0,-1,   0,-1,0,0,0],
-    [0,0, 0 ,  0,-1,0,0,10],
+    [0,0, 0,   0,-1,0,0,0],
 ]);
-let heatMap=[
-    [0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0],
-];
 
 function saturation(num,max=1,min=-1)
 {
@@ -82,9 +68,9 @@ function drawPolicy(ctx,policy=[0,0,0,0],W=10,H=10)
     ctx.fill();
 }
 
-function drawPlot(env,policy)
+function drawPlot(env,policy,ENVState)
 {
-    let heatmapMax=0;
+    /*let heatmapMax=0;
     for(let i=0;i<heatMap.length;i++)
     {
         for(let j=0;j<heatMap[i].length;j++)
@@ -92,7 +78,7 @@ function drawPlot(env,policy)
             if(heatmapMax<heatMap[i][j])
                 heatmapMax=heatMap[i][j];
         }
-    }
+    }*/
     ctx.fillStyle = "#FF0000";
     let gridXC = env.theWorld[0].length;
     let gridYC = env.theWorld.length;
@@ -122,6 +108,11 @@ function drawPlot(env,policy)
             ctx.restore();
         }
     }
+
+    ctx.save();
+    ctx.translate(cellW*ENVState.location.x, cellH*ENVState.location.y);
+    ctx.strokeRect(0,0,cellW,cellH);
+    ctx.restore();
 }
 
 function policyTrain(policy,expirence)
@@ -142,17 +133,24 @@ function policyTrain(policy,expirence)
 }
 
 
-function getEnvFeedBack(policy,stepLimit=300)
+function ENVState_Init()
 {
-    let score=0;
-    let location={x:0,y:0};
-    let i;
-    for(i=0;i<stepLimit;i++)
+    return {
+        location:{x:0,y:0},
+        steps:0
+    }
+}
+
+function getEnvFeedBack(ENVState,policy,explorFactor=1,stepLimit=300)
+{
+    let location=ENVState.location;
+    ENVState.steps++;
+
     {
-        let decesion = gw.decision( location.x, location.y, policy,1);
+        let decesion = gw.decision( location.x, location.y, policy,explorFactor);
         let action = decesion.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
         //console.log(location,decesion,action)
-        if(Math.random()>0.9)
+        if(Math.random()>1/(explorFactor+1))
         {
             action=Math.floor(Math.random()*4);
             if(action==4)action=3;
@@ -186,27 +184,59 @@ function getEnvFeedBack(policy,stepLimit=300)
             s_next:location
         };
         policyTrain(policy,experience);
-        if(reward==-10000)break;
+        if(reward==-10000 ||reward>0 || ENVState.steps == stepLimit)
+        {
+            return false;
+        }
         //if(reward!=0)break;
     }
-    //console.log(location);
-    return score;
+    return true;
 }
 
+let ENVState=ENVState_Init();
 
 let policy = gw.RandomPolicy_Init(0);
 
-console.log(policy);
+
+
+
+let explorFactor=1;
+
+function Explor()
+{
+    explorFactor=1;
+}
+function DoBest()
+{
+    explorFactor=0;
+}
+
+
+let Disp_skip_N=1;
+function Disp_Play()
+{
+    Disp_skip_N=1;
+}
+function Disp_Pause()
+{
+    Disp_skip_N=0;
+}
+
+function Disp_FastForward()
+{
+    Disp_skip_N=Disp_skip_N*2+1;
+}
+
+
+
 setInterval(()=>{
-    
-    getEnvFeedBack(policy);
-    getEnvFeedBack(policy);
-    getEnvFeedBack(policy);
-    getEnvFeedBack(policy);
-    getEnvFeedBack(policy);
-    getEnvFeedBack(policy);
-    getEnvFeedBack(policy);
-    getEnvFeedBack(policy);
-    drawPlot(gw,policy);
+    for(let i=0;i<Disp_skip_N;i++)
+    {
+        if(getEnvFeedBack(ENVState,policy,explorFactor) == false)
+        {
+            ENVState = ENVState_Init();
+        }
+    }
+    drawPlot(gw,policy,ENVState);
 },100);
 

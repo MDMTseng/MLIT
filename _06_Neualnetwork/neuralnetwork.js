@@ -171,7 +171,7 @@ function backProp(input,network,target_output,alpha)
             }
             if(layer.node_value[j]<=0)
             {
-                layer.node_gradient[j]*=0.01;
+                layer.node_gradient[j]*=0.1;
             }
         }
         layerBackProp(prelayer,layer);
@@ -276,7 +276,7 @@ function targetFunction(input)
 {
     let tmp = (input/10.0-0.5);
     let output1 =Math.sin(tmp*10)*2+4;
-    let output2 =tmp*10+10;
+    let output2 =tmp*(tmp+0.1)*10+1;
 
     return [output1,output2];
 }
@@ -369,7 +369,7 @@ setInterval(()=>{
         {
             let input = [i/10.0-5];
             let targetOutput = targetFunction(input[0]);
-            error+=backProp(input,netWork,targetOutput,0.001);
+            error+=backProp(input,netWork,targetOutput,0.002);
         }
         console.log(error);
     }
