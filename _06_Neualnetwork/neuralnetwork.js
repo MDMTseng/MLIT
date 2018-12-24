@@ -8,6 +8,21 @@ function drawPlot(p1,p2)
     WorldPlot.update();
 }
 
+function act_ReLu()
+{
+    return {
+        func:(val)=>(val>0)?val:val*0,
+        grad:(val)=>(val>0)?1:0.1,
+    }
+}
+
+function act_Linear()
+{
+    return {
+        func:(val)=>val,
+        grad:(val)=>1,
+    }
+}
 
 function random(scale=1)
 {
@@ -59,6 +74,12 @@ function CreateNeuralNet(network_shape)
     for(let i=1;i<network_shape.length;i++)
     {
         layers.push(CreateNeuralNetLayer(network_shape[i-1],network_shape[i]));
+        if(i==network_shape.length-1)
+        {//Last layer
+            layers[layers.length-1].act = act_ReLu();
+        }
+        else
+            layers[layers.length-1].act = act_ReLu();
     }
 
     return {layers:layers};
@@ -75,7 +96,7 @@ function NeuralNetNodeForwardPass(preLayer,currentNode)
         valueSum+=preLayer.node_value[i]*currentNode.w[i];
     }
     valueSum+=currentNode.w[currentNode.w.length-1];
-    if(valueSum<0)valueSum=0;//ReLu
+    //if(valueSum<0)valueSum=0;//ReLu
     return valueSum;
 }
 
@@ -85,8 +106,8 @@ function NeuralNetLayerForwardPass(preLayer,currentLayer)
 
     for(i=0;i<currentLayer.nodes.length;i++)
     {
-        currentLayer.node_value[i]=
-            NeuralNetNodeForwardPass(preLayer,currentLayer.nodes[i]);
+        currentLayer.node_value[i]=currentLayer.act.func(
+            NeuralNetNodeForwardPass(preLayer,currentLayer.nodes[i]));
     }
     return currentLayer.node_value;
 }
@@ -169,10 +190,9 @@ function backProp(input,network,target_output,alpha)
             {
                 layer.node_gradient[j]=gradient[j];
             }
-            if(layer.node_value[j]<=0)
-            {
-                layer.node_gradient[j]*=0.1;
-            }
+
+            layer.node_gradient[j] *=layer.act.grad(layer.node_value[j]);
+
         }
         layerBackProp(prelayer,layer);
     }
@@ -186,7 +206,9 @@ function backProp(input,network,target_output,alpha)
             for(let k=0;k<node.w.length;k++)
             {
                 node.w[k]-=node.dw[k]*alpha;
+                //node.w[k]*=0.999;
             }
+            //console.log(node.dw)
         }
     }
 
@@ -371,7 +393,7 @@ setInterval(()=>{
             let targetOutput = targetFunction(input[0]);
             error+=backProp(input,netWork,targetOutput,0.002);
         }
-        console.log(error);
+        //console.log(error);
     }
     testBestFit(netWork);
 
