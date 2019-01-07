@@ -139,15 +139,107 @@ function NNCreature(world)//body is the pysical(matter.js engine) body in env
 
   this.in_dim=this.localMotion.length + this.view.length + this.tentaclesState.length;
 
-  let tentaclePlanSize = (2+tentacleGridXY*tentacleGridXY);
+  let tentaclePlanSize = (2+2+tentacleGridXY*tentacleGridXY);
   this.tentaclesPlanState = new Array(tentaclePlanSize*tentacleCount).fill(0);
   let pushForceScale=0.01;
-  //grapstate(grap/release),push/pull,(targetXY(10*10) grid) X {tentacleCount} tentacles in mind
+  //grap,release,push,pull,(targetXY(10*10) grid) X {tentacleCount} tentacles in mind
   this.out_dim=this.tentaclesPlanState.length;//For acceleration, turn,
 
 
   this.core =generate_net(this.in_dim,this.out_dim);
-  
+  this.experiences=[];
+  this.train=(number=1)=>{
+    let discount = 0.9;
+    let avloss = 0.0;
+    if(this.experiences.length<number)number=this.experiences.length;
+    let trainer = this.core.trainer;
+    for(let i=0;i<number;i++)
+    {
+      let idx = Math.floor(Math.random()*this.experiences.length);
+      let experience = this.experiences[idx];
+      
+      let decision  =      this.core.net.forward(experience.S);
+      let decision_next  = this.core.net.forward(experience.S_next);
+      let reward = experience.reward;
+      let action = experience.A;
+      for(let i=0;i<tentacleCount;i++)
+      {
+        let offset = tentaclePlanSize*i;
+        
+        //this.tentaclesPlanState[offset + 0]  grap
+        //this.tentaclesPlanState[offset + 1]  release
+        //this.tentaclesPlanState[offset + 2]  push
+        //this.tentaclesPlanState[offset + 3]  pull
+
+        if(action.grip!==undefined)
+        {
+          let gr_max = decision_next.w[offset+0];
+          if(gr_max<decision_next.w[offset+1])
+            gr_max = decision_next.w[offset+1];
+          
+          let gr_V=reward+discount*gr_max;
+          if(action.grip)
+          {
+            decision.w[offset+0]=gr_V;
+          }
+          else
+          {
+            decision.w[offset+1]=gr_V;
+          }
+        }
+
+        if(action.push!==undefined)
+        {
+          let pp_max = decision_next.w[offset+2];
+          if(pp_max<decision_next.w[offset+3])
+            pp_max = decision_next.w[offset+3];
+            
+          let pp_V=reward+discount*pp_max;
+          if(action.push)
+          {
+            decision.w[offset+2]=pp_V;
+          }
+          else
+          {
+            decision.w[offset+3]=pp_V;
+          }
+        }
+
+        offset+=4;
+        
+        if(action.push!==undefined)
+        {
+
+          let g_max=-Number.MAX_VALUE;
+          for(let i=0;i<tentacleGridXY*tentacleGridXY;i++)
+          {
+            if(g_max<decision_next.w[offset+i])
+            {
+              g_max=decision_next.w[offset+i];
+            }
+          }
+          let g_V=reward+discount*g_max;
+          decision.w[offset+action.planInfo.id]=g_V;
+        }
+
+
+      }
+
+      
+      console.log(experience.S);
+      console.log(decision);
+      var stats =trainer.train(experience.S, decision);
+
+      console.log(stats);
+
+      avloss += stats.loss;
+
+
+    }
+    console.log(avloss/number);
+    return avloss/number;
+  }
+
 
   this.reset=(initLocation)=>{
     console.log(initLocation);
@@ -218,18 +310,20 @@ function NNCreature(world)//body is the pysical(matter.js engine) body in env
     
     if(this.tentaclesState[offset_t_input+2]>0)//sense Touch to a block
     {
-      //this.tentaclesPlanState[offset + 0]  grapstate(grap/release)
-      //this.tentaclesPlanState[offset + 1]  push/pull
+      //this.tentaclesPlanState[offset + 0]  grap
+      //this.tentaclesPlanState[offset + 1]  release
+      //this.tentaclesPlanState[offset + 2]  push
+      //this.tentaclesPlanState[offset + 3]  pull
 
       
-      action_obj.grip = this.tentaclesPlanState[offset + 0];
-      if(this.tentaclesPlanState[offset + 0]>0)//Grip the block
+      action_obj.grip = this.tentaclesPlanState[offset + 0]>this.tentaclesPlanState[offset + 1];
+      if(this.tentaclesPlanState[offset + 0]>this.tentaclesPlanState[offset + 1])//Grip the block
       {
         console.log("grip...");
-        let push_pull =this.tentaclesPlanState[offset + 1];
-        
-        action_obj.push_pull = push_pull;
-        push_pull=push_pull>0?1:-1;
+        let push_pull =
+          (this.tentaclesPlanState[offset + 2]>this.tentaclesPlanState[offset + 3])?1:-1;
+      
+        action_obj.push = push_pull>0;
         push_pull*=pushForceScale;
         let body=this.body.body;
         let vec = {x:tentacle.position.x - body.position.x,y:tentacle.position.y - body.position.y};
@@ -242,7 +336,7 @@ function NNCreature(world)//body is the pysical(matter.js engine) body in env
 
         
 
-        console.log(mag,tentacleGridXY*gridScale);
+        //console.log(mag,tentacleGridXY*gridScale);
         if(mag<tentacleGridXY*gridScale)
         {
           Matter.Body.setVelocity(tentacle, {x:0,y:0});
@@ -257,7 +351,7 @@ function NNCreature(world)//body is the pysical(matter.js engine) body in env
 
 
 
-    offset+=2;
+    offset+=4;
     let arrayPiece = this.tentaclesPlanState.slice(offset,offset+tentacleGridXY*tentacleGridXY);
 
 
@@ -266,7 +360,7 @@ function NNCreature(world)//body is the pysical(matter.js engine) body in env
     let maxIdInfo = arrayPiece.reduce((maxInfo,ele,id)=>
       (maxInfo.max<ele)?{id:id,max:ele}:maxInfo,{id:-1,max:-Number.MAX_VALUE});
       
-    action_obj.planLocation = maxIdInfo;
+    action_obj.planInfo = maxIdInfo;
     let t_plan_target = {x:(maxIdInfo.id%tentacleGridXY)-tentacleGridXY/2,y:Math.floor(maxIdInfo.id/tentacleGridXY)-tentacleGridXY/2};
     t_plan_target.x*=gridScale;
     t_plan_target.y*=gridScale;
@@ -305,8 +399,9 @@ function NNCreature(world)//body is the pysical(matter.js engine) body in env
     this.updateInput();
 
     this.interact();
-    let S = [];
-    this.tmp_in_buff.w.forEach(x=>{S.push(x)});//Copy input of the network (S)
+    let S = new convnetjs.Vol(1,1,this.in_dim,0.0);
+    
+    this.tmp_in_buff.w.forEach((x,idx)=>{S.w[idx]=x});//Copy input of the network (S)
     let targetVec = {x:this.targetLocation.x-this.body.body.position.x,y:this.targetLocation.y-this.body.body.position.y};
     let targetVec_mag = Math.hypot(targetVec.x,targetVec.y);
     
@@ -323,6 +418,16 @@ function NNCreature(world)//body is the pysical(matter.js engine) body in env
       A:pre_action,
       S_next:S,
       reward:pre_reward
+    }
+
+    if(this.experiences.length>1000)
+    {
+      this.experiences[Math.floor(Math.random()*this.experiences.length)]=experience;
+    }
+    else
+    {
+      this.experiences.push(experience);
+
     }
     //console.log(JSON.stringify(experience));
     this.pre_S = S;
@@ -417,7 +522,8 @@ Matter.Events.on(engine, 'beforeUpdate', function() {
   else
   {
     creature.reset({x:400,y:200});
-    testC = 100;
+    creature.train(10);
+    testC = 1000000;
   }
 });
 
